@@ -1,2 +1,4 @@
 *.txt
 *.nwb
+*.pickle
+__pycache__/

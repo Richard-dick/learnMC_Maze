@@ -10,12 +10,12 @@ from sklearn.preprocessing import StandardScaler
 import pickle
 
 import pandas as pd
-pd.set_option('display.max_rows',None)
+# pd.set_option('display.max_rows',None)
 pd.set_option('display.max_columns',None)
 
 ## using my func
 from src.format import picklize, load_data
-PICKLIZED = True
+PICKLIZED = False
 
 
 
@@ -23,8 +23,8 @@ if __name__ == '__main__':
     if not PICKLIZED:
         picklize("MC_Maze_S")
     train_data, test_data = load_data("MC_Maze_S")
-    print(type(train_data))
-    print(type(test_data))
+    print(train_data["spikes"])
+    # print(type(test_data))
         
     
 
