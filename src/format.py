@@ -3,49 +3,123 @@ from nlb_tools.nwb_interface import NWBDataset
 import pickle
 import numpy as np
 import pandas as pd
-# import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D
-# from sklearn.linear_model import Ridge
-# from sklearn.model_selection import GridSearchCV
-# from sklearn.decomposition import PCA
-# from sklearn.preprocessing import StandardScaler
+import os
+from src.utils import partition
+import copy
 
 target_list = ["spikes", "pos", "condition"]
 
 def picklize(dataset_name:str):
+    print("start reading")
     if dataset_name == 'MC_Maze_S':
         dataset = NWBDataset("./data/000140/sub-Jenkins/", "*train", split_heldout=False)
-        trial_info = dataset.trial_info
-        trial_data = dataset.data
-        print(trial_data["spikes"])
-        exit(0)
-        for i in range(100):
-            print(trial_info["start_time"][i]+"----->"+trial_info["end_time"][i])
-            
-        print(type(trial_info))
-        print(trial_info["start_time"][0])
-        exit(0)
-        
-        data = dict()
-        # * 开始转成需要的格式
-        with open('data/pickle/mc_maze_s_train.pickle', 'wb') as f:
-            
-            
-            
-            pickle.dump(data, f)
-        dataset = NWBDataset("./data/000140/sub-Jenkins/", "*test", split_heldout=False)
-        with open('data/pickle/mc_maze_s_test.pickle', 'wb') as f:
-            pickle.dump(data, f)
-        return True
+    elif dataset_name == 'MC_Maze':
+        dataset = NWBDataset("./data/000128/sub-Jenkins/", "*train", split_heldout=False)     
     else :
         return False
+    if not os.path.exists('data/pickle'):
+        os.makedirs('data/pickle')
+    print("reading over, now transferring")
+    trial_info = dataset.trial_info
+    trial_data = dataset.data
+    # * 开始转成需要的格式
+    ## condition
+    data = dict()
+    data["condition"] = list(trial_info["maze_id"])
     
-def load_data(dataset_name:str):
+    pos_list = list()
+    spikes_list = list()
+    vel_list = list()
+    onset_time = list(trial_info["move_onset_time"])
+    print("start transpose")
+    for idx in range(len(onset_time)):
+        print("round: "+ str(idx))
+        onset = onset_time[idx]
+        start = onset - pd.to_timedelta("549ms")
+        end = onset + pd.to_timedelta("450ms")
+        pos = np.array(trial_data.loc[start:end, "hand_pos":"hand_pos"]).T
+        spikes = np.array(trial_data.loc[start:end, "spikes":"spikes"]).T
+        vel = np.array(trial_data.loc[start:end, "hand_vel":"hand_vel"]).T
+        pos_list.append(pos)
+        spikes_list.append(spikes)
+        vel_list.append(vel)
+    data["pos"] = pos_list
+    data["spikes"] = spikes_list
+    data["vel"] = vel_list
+    print("transposing over")
+
+    
+    if dataset_name == 'MC_Maze_S':
+        with open('data/pickle/mc_maze_s_train.pickle', 'wb') as f:
+            pickle.dump(data, f)
+    elif dataset_name == 'MC_Maze':
+        with open('data/pickle/mc_maze_train.pickle', 'wb') as f:
+            pickle.dump(data, f)
+    
+    
+    # dataset = NWBDataset("./data/000140/sub-Jenkins/", "*test", split_heldout=False)
+    # with open('data/pickle/mc_maze_s_test.pickle', 'wb') as f:
+    #     pickle.dump(data, f)
+    
+def load_data(dataset_name:str, val_frac):
     if dataset_name == 'MC_Maze_S':
         with open('data/pickle/mc_maze_s_train.pickle', 'rb') as f:
-            train_data = pickle.load(f)
-        with open('data/pickle/mc_maze_s_test.pickle', 'rb') as f:
-            test_data = pickle.load(f)
-        return train_data.data, test_data.data
+            data = pickle.load(f)
+        
+        return data
+    elif dataset_name == 'MC_Maze':
+        with open('data/pickle/mc_maze_train.pickle', 'rb') as f:
+            data = pickle.load(f)
+        train_idx, test_idx = partition(data['condition'], val_frac)
+        Train = dict()
+        Test = dict()
+        for k in data.keys():
+            Train[k] = [data[k][i] for i in train_idx]
+            Test[k] = [data[k][i] for i in test_idx]
+    
+        return Train, Test
     else :
         return None, None
+    
+def restrict_data(Train:np.array, Test:np.array, var_group:str):
+
+    """
+    Restrict training and testing data to only include a particular behavioral variable group(s).
+
+    Inputs
+    ------
+    Train: dictionary containing trialized neural and behavioral data in training set
+
+    Test: dictionary containing trialized neural and behavioral data in testing set
+
+    var_group: string containing behavioral variable group(s) to restrict to
+
+    Outputs
+    -------
+    Train_b: copy of Train where behavioral data has been restricted as specified by var_group
+
+    Test_b: copy of Test where behavioral data has been restricted as specified by var_group
+   
+    """
+    
+    # Initialize outputs.
+    Train_b = dict()
+    Test_b = dict()
+    
+    # Copy spikes into new dictionaries.
+    Train_b['spikes'] = copy.deepcopy(Train['spikes'])
+    Test_b['spikes'] = copy.deepcopy(Test['spikes'])
+    
+    # Copy condition labels (if task had condition structure).
+    Train_b['condition'] = copy.deepcopy(Train['condition'])
+    Test_b['condition'] = copy.deepcopy(Test['condition'])
+
+        
+    # Copy over relevant behavioral variables
+    Train_beh = copy.deepcopy(Train[var_group])
+    Test_beh = copy.deepcopy(Test[var_group])
+    
+    Train_b['behavior'] = Train_beh
+    Test_b['behavior'] = Test_beh
+
+    return Train_b, Test_b

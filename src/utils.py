@@ -1,49 +1,19 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-################################################################################
-
-def partition(condition, test_frac):
-
-    """
-    Partition trials into training and testing sets.
-
-    Inputs
-    ------
-    condition: list (1 x number of trials) of condition IDs
-        If there is no condition structure, all entries will be NaNs.
-
-    test_frac: fraction of trials in the data set that should be reserved for testing
-
-    Outputs
-    -------
-    train_idx: 1D numpy array of indices for trials that should be used for training
-
-    test_idx: 1D numpy array of indices for trials that should be used for testing
-   
-    """
-
+def partition(condition:list, div_frac):
     # Number the trials.
     trial_idx = np.arange(len(condition))
     
     # Partition the data differently depending on whether there is condition structure.
-    if not np.all(np.isnan(condition)):
-
-        # Try to maintain equal representation from different conditions in the train
-        # and test sets. If the test set is so small that it can't sample at least
-        # one from each condition, then don't bother trying to stratify the split.
-        n_conds = len(np.unique(np.array(condition)))
-        n_test = int(test_frac*len(condition))
-        if n_test >= n_conds:
-            train_idx, test_idx = train_test_split(trial_idx, test_size=test_frac, stratify=condition)
-        else:
-            train_idx, test_idx = train_test_split(trial_idx, test_size=test_frac)
+    n_conds = len(np.unique(np.array(condition)))
+    n_test = int(div_frac*len(condition))
+    if n_test >= n_conds:
+        train_idx, val_idx = train_test_split(trial_idx, test_size=div_frac, stratify=condition)
     else:
+        train_idx, val_idx = train_test_split(trial_idx, test_size=div_frac)
 
-        # Divide the trials up randomly into train and test sets.
-        train_idx, test_idx = train_test_split(trial_idx, test_size=test_frac)
-
-    return train_idx, test_idx
+    return train_idx, val_idx
 
 ################################################################################
 
