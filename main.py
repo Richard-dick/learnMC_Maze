@@ -7,8 +7,10 @@ import pandas as pd
 # pd.set_option('display.max_columns',None)
 
 ## using my func
-from src.format import picklize, load_data, restrict_data
+from src.format import picklize, load_data, restrict_data, store_results, save_data
 from src.model import train
+from src.utils import compute_R2
+
 
 PICKLIZED = True
 
@@ -21,6 +23,10 @@ MODEL = ['gru', 'ffn']
 CONFIG_PATH = 'config/mc_maze.yaml'
 
 OPTIMIZE = False
+
+RUN = 'test-1'
+
+Results = {m: dict() for m in MODEL}
 
 if __name__ == '__main__':
     if not PICKLIZED:
@@ -36,7 +42,18 @@ if __name__ == '__main__':
             train_var, val_var = restrict_data(train_data, val_data, target_var)
             model, HyperParams = train(train_var['spikes'], train_var['behavior'], train_var['condition'], model_name, model_config, OPTIMIZE)
             
-            val_data['estimate'] = model.predict(val_data['spikes'])
+            val_var['estimate'] = model.predict(val_var['spikes'])
             
-            model.evaluate()
-    
+            # model.evaluate()
+            # Evaluate performance, excluding the first tau samples for
+            # which sufficient spiking history did not exist for all methods.
+            tau = HyperParams['Bin_Size']*(HyperParams['tau_prime']+1)-1
+            R2 = compute_R2(val_var['behavior'], val_var['estimate'], skip_samples=tau, eval_bin_size=5)
+            print('{} R2: {}, {}'.format(target_var,R2, model_name))
+
+            # Store performance in 'Results' dictionary.
+            store_results(R2, val_var['behavior'], val_var['estimate'],
+                HyperParams, target_var, train_data)
+
+# Save results.
+save_data(Results, RUN)

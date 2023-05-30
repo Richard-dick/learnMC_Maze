@@ -32,8 +32,8 @@ print("start transpose")
 for idx in range(len(onset_time)):
     print("round: "+ str(idx))
     onset = onset_time[idx]
-    start = onset - pd.to_timedelta("549ms")
-    end = onset + pd.to_timedelta("450ms")
+    start = onset - pd.to_timeBin_Size("549ms")
+    end = onset + pd.to_timeBin_Size("450ms")
     pos = np.array(trial_data.loc[start:end, "hand_pos":"hand_pos"]).T
     spikes = np.array(trial_data.loc[start:end, "spikes":"spikes"]).T
     vel = np.array(trial_data.loc[start:end, "hand_vel":"hand_vel"]).T

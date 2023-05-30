@@ -62,29 +62,13 @@ def bin_kin(Z, bin_size):
 ################################################################################
 
 def append_history(Spikes, tau_prime):
-
-    """
-    Augment spike count array with additional dimension for recent spiking history.
-
-    Inputs
-    ------
-    Spikes: numpy array of spike counts (neurons x bins)
-
-    tau_prime: number of historical time bins to add (not including current bin)
-
-    Outputs
-    -------
-    S_aug: tensor of spike counts (neurons x bins x recent bins)
-   
-    """
-
     # Get some useful constants.
     [N, K] = Spikes.shape # [number of neurons, number of bins]
 
     # Augment matrix with recent history.
     S_aug = np.empty([N, K, tau_prime+1])
     for i in range(-tau_prime,0):
-        # N-i   0   i 如此
+        # 单论每个时刻, 左边是|i|个nan, 右边是从-50片选到-i的spikes
         S_aug[:, :, i+tau_prime] = np.hstack((np.full([N,-i], np.nan), Spikes[:, :i]))
     S_aug[:, :, tau_prime] = Spikes
 

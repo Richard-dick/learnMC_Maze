@@ -1,7 +1,7 @@
 ffn:
   var_groups: ['pos','vel']
   general:
-    Delta: 20
+    Bin_Size: 20
     tau_prime: 14
   opt:
     num_units: [50,600]
@@ -25,7 +25,7 @@ ffn:
 gru:
   var_groups: ['pos','vel']
   general:
-    Delta: 20
+    Bin_Size: 20
     tau_prime: 14
   opt:
     num_units: [50,600]

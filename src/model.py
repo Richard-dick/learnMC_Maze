@@ -74,7 +74,7 @@ def optimize_hyperparams(S_train, S_val, Z_train, Z_val, method, gen_hp, opt_con
         Z_val_hat = model.predict(S_val)
         
         # Return mean R2 across decoded variables.
-        tau = HyperParams['Delta']*(HyperParams['tau_prime']+1)-1
+        tau = HyperParams['Bin_Size']*(HyperParams['tau_prime']+1)-1
         return np.mean(compute_R2(Z_val, Z_val_hat, skip_samples=tau, eval_bin_size=5))
     
     # Unpack optimization settings.
@@ -126,7 +126,7 @@ def construct_hyperparams(optimized_hp, gen_hp, method):
     if method == 'wf':
         HyperParams['lam'] = optimized_hp['lam']
     elif method == 'kf':
-        HyperParams['lag'] = int(np.round(optimized_hp['lag']/HyperParams['Delta'])*HyperParams['Delta']) # closest multiple of Delta
+        HyperParams['lag'] = int(np.round(optimized_hp['lag']/HyperParams['Bin_Size'])*HyperParams['Bin_Size']) # closest multiple of Bin_Size
     elif method == 'ffn':
         HyperParams['num_units'] = int(optimized_hp['num_units'])
         HyperParams['num_layers'] = int(optimized_hp['num_layers'])

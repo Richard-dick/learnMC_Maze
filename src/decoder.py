@@ -6,7 +6,7 @@ import tensorflow.keras.layers as layers
 from src.utils import bin_spikes, append_history, array2list, zero_order_hold
 import warnings
 
-
+    
 
 
 ########################## FEEDFORWARD NEURAL NETWORK ##########################
@@ -15,7 +15,7 @@ class FeedforwardNetwork(object):
 
     def __init__(self,HyperParams):
         # number of time points to pool into a time bin
-        self.Delta = HyperParams['Delta']
+        self.Bin_Size = HyperParams['Bin_Size']
         # ? number of previous time bins (in addition to the current bin) to use for decoding
         self.tau_prime = HyperParams['tau_prime']
         # number of units per hidden layer
@@ -29,7 +29,7 @@ class FeedforwardNetwork(object):
 
     def fit(self, spikes, behavior):
         # Unpack attributes.
-        Delta = self.Delta
+        Bin_Size = self.Bin_Size
         tau_prime = self.tau_prime
         num_units = self.num_units
         num_layers = self.num_layers
@@ -38,21 +38,24 @@ class FeedforwardNetwork(object):
     
         # Bin spikes
         # * list of N x T numpy arrays, each of which contains spiking data for N neurons over T times
-        spikes = [bin_spikes(sp, Delta) for sp in spikes]
+        # 将list中每个元素(182, 1000)在axis=1(time)维度bin操作, 分箱大小为Bin_Size
+        binned_spikes = [bin_spikes(sp, Bin_Size) for sp in spikes]
         
         # Downsample kinematics to bin width.
         # * list of M x T numpy arrays, each of which contains behavioral data for M behavioral variables over T times
-        behavior = [z[:,Delta-1::Delta] for z in behavior]
+        behavior = [b[:,Bin_Size-1::Bin_Size] for b in behavior]
 
         # Reformat observations to include recent history.
-        X = [append_history(s, tau_prime) for s in spikes]
+        # ! 现在spike多了一个轴, 用来表示一系列previous的时间, 大小为tau_prime+1
+        appended_binned_spikes = [append_history(bs, tau_prime) for bs in binned_spikes]
 
         # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        X = [x[:,tau_prime:,:] for x in X]
+        # * 现在只需要后36时刻的spikes信息了
+        X = [abS[:,tau_prime:,:] for abS in appended_binned_spikes]
         behavior = [z[:,tau_prime:] for z in behavior]
 
         # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
-        # 将X的list中的axis=1(times)给合到一起, 然后再调整为第一个维度
+        # 将X的list中的axis=1(times)给合到一起(变成1836*36), 然后再调整为第一个维度
         X = np.moveaxis(np.concatenate(X,axis=1), [0, 1, 2], [1, 0, 2])
         behavior = np.concatenate(behavior, axis=1).T
 
@@ -94,7 +97,7 @@ class FeedforwardNetwork(object):
         """
 
         # Unpack attributes.
-        Delta = self.Delta
+        Bin_Size = self.Bin_Size
         tau_prime = self.tau_prime
         X_mu = self.X_mu
         X_sigma = self.X_sigma
@@ -105,16 +108,16 @@ class FeedforwardNetwork(object):
         T = [s.shape[1] for s in Spikes]
 
         # Bin spikes.
-        S = [bin_spikes(sp, Delta) for sp in Spikes]
+        binned_spikes = [bin_spikes(sp, Bin_Size) for sp in Spikes]
 
         # Store each trial's bin length.
-        T_prime = [s.shape[1] for s in S]
+        T_prime = [bs.shape[1] for bs in binned_spikes]
 
         # Reformat observations to include recent history.
-        X = [append_history(s, tau_prime) for s in S]
+        append_binned_spikes = [append_history(s, tau_prime) for s in binned_spikes]
 
         # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        X = [x[:,tau_prime:,:] for x in X]
+        X = [x[:,tau_prime:,:] for x in append_binned_spikes]
 
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
         X = np.moveaxis(np.concatenate(X,axis=1), [0, 1, 2], [1, 0, 2])
@@ -136,8 +139,8 @@ class FeedforwardNetwork(object):
         Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
 
         # Return estimate to original time scale.
-        Z_hat = [zero_order_hold(Z,Delta) for Z in Z_hat]
-        Z_hat = [np.hstack((np.full((Z.shape[0],Delta-1), np.nan), Z)) for Z in Z_hat]
+        Z_hat = [zero_order_hold(Z,Bin_Size) for Z in Z_hat]
+        Z_hat = [np.hstack((np.full((Z.shape[0],Bin_Size-1), np.nan), Z)) for Z in Z_hat]
         Z_hat = [z[:,:t] for z,t in zip(Z_hat, T)]
 
         return Z_hat
@@ -151,7 +154,7 @@ class GRU(object):
 
     Hyperparameters
     ---------------
-    Delta: number of time points to pool into a time bin
+    Bin_Size: number of time points to pool into a time bin
     
     tau_prime: number of previous time bins (in addition to the current bin) to use for decoding
     
@@ -164,7 +167,7 @@ class GRU(object):
     """
 
     def __init__(self,HyperParams):
-        self.Delta = HyperParams['Delta']
+        self.Bin_Size = HyperParams['Bin_Size']
         self.tau_prime = HyperParams['tau_prime']
         self.num_units = HyperParams['num_units']
         self.frac_dropout = HyperParams['frac_dropout']
@@ -188,20 +191,20 @@ class GRU(object):
         """
 
         # Unpack attributes.
-        Delta = self.Delta
+        Bin_Size = self.Bin_Size
         tau_prime = self.tau_prime
         num_units = self.num_units
         frac_dropout = self.frac_dropout
         num_epochs = self.num_epochs
 
         # Bin spikes.
-        S = [bin_spikes(sp, Delta) for sp in S]
+        S = [bin_spikes(sp, Bin_Size) for sp in S]
 
         # Reformat observations to include recent history.
         X = [append_history(s, tau_prime) for s in S]
 
         # Downsample kinematics to bin width.
-        Z = [z[:,Delta-1::Delta] for z in Z]
+        Z = [z[:,Bin_Size-1::Bin_Size] for z in Z]
 
         # Remove samples on each trial for which sufficient spiking history doesn't exist.
         X = [x[:,tau_prime:,:] for x in X]
@@ -250,7 +253,7 @@ class GRU(object):
         """
 
         # Unpack attributes.
-        Delta = self.Delta
+        Bin_Size = self.Bin_Size
         tau_prime = self.tau_prime
         X_mu = self.X_mu
         X_sigma = self.X_sigma
@@ -261,7 +264,7 @@ class GRU(object):
         T = [s.shape[1] for s in S]
 
         # Bin spikes.
-        S = [bin_spikes(sp, Delta) for sp in S]
+        S = [bin_spikes(sp, Bin_Size) for sp in S]
 
         # Store each trial's bin length.
         T_prime = [s.shape[1] for s in S]
@@ -292,8 +295,8 @@ class GRU(object):
         Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
 
         # Return estimate to original time scale.
-        Z_hat = [zero_order_hold(Z,Delta) for Z in Z_hat]
-        Z_hat = [np.hstack((np.full((Z.shape[0],Delta-1), np.nan), Z)) for Z in Z_hat]
+        Z_hat = [zero_order_hold(Z,Bin_Size) for Z in Z_hat]
+        Z_hat = [np.hstack((np.full((Z.shape[0],Bin_Size-1), np.nan), Z)) for Z in Z_hat]
         Z_hat = [z[:,:t] for z,t in zip(Z_hat, T)]
 
         return Z_hat
