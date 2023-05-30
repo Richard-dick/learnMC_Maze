@@ -17,33 +17,17 @@ def partition(condition:list, div_frac):
 
 ################################################################################
 
-def bin_spikes(spikes, bin_size):
-
-    """
-    Bin spikes in time.
-
-    Inputs
-    ------
-    spikes: numpy array of spikes (neurons x time)
-
-    bin_size: number of time points to pool into a time bin
-
-    Outputs
-    -------
-    S: numpy array of spike counts (neurons x bins)
-   
-    """
-
+def bin_spikes(spikes:np.array, bin_size:np.array) -> np.array:
     # Get some useful constants.
-    [N, n_time_samples] = spikes.shape
-    K = int(n_time_samples/bin_size) # number of time bins
+    [neuron_samples, time_samples] = spikes.shape
+    bins = int(time_samples/bin_size) # number of time bins
 
     # Count spikes in bins.
-    S = np.empty([N, K])
-    for k in range(K):
-        S[:, k] = np.sum(spikes[:, k*bin_size:(k+1)*bin_size], axis=1)
+    binned_spikes = np.empty([neuron_samples, bins])
+    for idx in range(bins):
+        binned_spikes[:, idx] = np.sum(spikes[:, idx*bin_size:(idx+1)*bin_size], axis=1)
 
-    return S
+    return binned_spikes
 
 ################################################################################
 
@@ -77,14 +61,14 @@ def bin_kin(Z, bin_size):
 
 ################################################################################
 
-def append_history(S, tau_prime):
+def append_history(Spikes, tau_prime):
 
     """
     Augment spike count array with additional dimension for recent spiking history.
 
     Inputs
     ------
-    S: numpy array of spike counts (neurons x bins)
+    Spikes: numpy array of spike counts (neurons x bins)
 
     tau_prime: number of historical time bins to add (not including current bin)
 
@@ -95,13 +79,14 @@ def append_history(S, tau_prime):
     """
 
     # Get some useful constants.
-    [N, K] = S.shape # [number of neurons, number of bins]
+    [N, K] = Spikes.shape # [number of neurons, number of bins]
 
     # Augment matrix with recent history.
     S_aug = np.empty([N, K, tau_prime+1])
     for i in range(-tau_prime,0):
-        S_aug[:, :, i+tau_prime] = np.hstack((np.full([N,-i], np.nan), S[:, :i]))
-    S_aug[:, :, tau_prime] = S
+        # N-i   0   i 如此
+        S_aug[:, :, i+tau_prime] = np.hstack((np.full([N,-i], np.nan), Spikes[:, :i]))
+    S_aug[:, :, tau_prime] = Spikes
 
     return S_aug
 

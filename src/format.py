@@ -82,25 +82,6 @@ def load_data(dataset_name:str, val_frac):
         return None, None
     
 def restrict_data(Train:np.array, Test:np.array, var_group:str):
-
-    """
-    Restrict training and testing data to only include a particular behavioral variable group(s).
-
-    Inputs
-    ------
-    Train: dictionary containing trialized neural and behavioral data in training set
-
-    Test: dictionary containing trialized neural and behavioral data in testing set
-
-    var_group: string containing behavioral variable group(s) to restrict to
-
-    Outputs
-    -------
-    Train_b: copy of Train where behavioral data has been restricted as specified by var_group
-
-    Test_b: copy of Test where behavioral data has been restricted as specified by var_group
-   
-    """
     
     # Initialize outputs.
     Train_b = dict()
@@ -108,18 +89,11 @@ def restrict_data(Train:np.array, Test:np.array, var_group:str):
     
     # Copy spikes into new dictionaries.
     Train_b['spikes'] = copy.deepcopy(Train['spikes'])
-    Test_b['spikes'] = copy.deepcopy(Test['spikes'])
-    
-    # Copy condition labels (if task had condition structure).
     Train_b['condition'] = copy.deepcopy(Train['condition'])
-    Test_b['condition'] = copy.deepcopy(Test['condition'])
-
-        
-    # Copy over relevant behavioral variables
-    Train_beh = copy.deepcopy(Train[var_group])
-    Test_beh = copy.deepcopy(Test[var_group])
+    Train_b['behavior'] = copy.deepcopy(Train[var_group])
     
-    Train_b['behavior'] = Train_beh
-    Test_b['behavior'] = Test_beh
+    Test_b['spikes'] = copy.deepcopy(Test['spikes'])
+    Test_b['condition'] = copy.deepcopy(Test['condition'])
+    Test_b['behavior'] = copy.deepcopy(Test[var_group])
 
     return Train_b, Test_b

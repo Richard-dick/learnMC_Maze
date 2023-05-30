@@ -3,7 +3,7 @@ from src.decoder import FeedforwardNetwork, GRU
 from bayes_opt import BayesianOptimization
 from src.utils import partition, compute_R2
 
-def train(S, Z, condition, method, optimize_flag):
+def train(S, Z, condition, method, config, optimize_flag):
     
     if optimize_flag:
         train_idx, val_idx = partition(condition, 0.2)
@@ -11,11 +11,20 @@ def train(S, Z, condition, method, optimize_flag):
         S_val   = [S[i] for i in val_idx]
         Z_train = [Z[i] for i in train_idx]
         Z_val   = [Z[i] for i in val_idx]
-        
-    # Optimize hyperparameters.
+        # Optimize hyperparameters.
         HyperParams = optimize_hyperparams(S_train, S_val, Z_train, Z_val, method, config['general'], config['opt'])
-
-
+    else :
+        # Unpack hyperparameters directly from config.
+        HyperParams = config['general'].copy()
+        beh_key = list(config.keys())
+        beh_key.remove('general')
+        beh_key.remove('opt')
+        HyperParams.update(config[beh_key[0]])
+        
+    model = train_specific_model(S, Z, method, HyperParams)
+    
+    return model, HyperParams
+    
 
 
 
@@ -131,3 +140,24 @@ def construct_hyperparams(optimized_hp, gen_hp, method):
         raise NameError('Method not recognized.')
 
     return HyperParams
+
+
+def train_specific_model(S, Z, method, HyperParams):
+
+    # Train model for appropriate method.
+    if method == 'ffn':
+
+        # Fit a feedforward neural network.
+        model = FeedforwardNetwork(HyperParams)
+        model.fit(S, Z)
+
+    elif method == 'gru':
+
+        # Fit a GRU.
+        model = GRU(HyperParams)
+        model.fit(S, Z)
+
+    else:
+        raise NameError('Method not recognized.')
+
+    return model

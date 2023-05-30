@@ -1,7 +1,8 @@
 import numpy as np
 from numpy.linalg import inv, pinv
 from scipy.linalg import solve_discrete_are
-
+import tensorflow as tf
+import tensorflow.keras.layers as layers
 from src.utils import bin_spikes, append_history, array2list, zero_order_hold
 import warnings
 
@@ -12,50 +13,21 @@ import warnings
 
 class FeedforwardNetwork(object):
 
-    """
-    Class for the feedforward neural network decoder
-
-    Hyperparameters
-    ---------------
-    Delta: number of time points to pool into a time bin
-    
-    tau_prime: number of previous time bins (in addition to the current bin) to use for decoding
-    
-    num_units: number of units per hidden layer
-
-    num_layers: number of hidden layers
-
-    frac_dropout: unit dropout rate
-
-    num_epochs: number of training epochs
-    
-    """
-
     def __init__(self,HyperParams):
+        # number of time points to pool into a time bin
         self.Delta = HyperParams['Delta']
+        # ? number of previous time bins (in addition to the current bin) to use for decoding
         self.tau_prime = HyperParams['tau_prime']
+        # number of units per hidden layer
         self.num_units = HyperParams['num_units']
+        # number of hidden layers
         self.num_layers = HyperParams['num_layers']
+        # ? unit dropout rate
         self.frac_dropout = HyperParams['frac_dropout']
+        # number of training epochs
         self.num_epochs = HyperParams['num_epochs']
 
-    def fit(self, S, Z):
-
-        """
-        Train feedforward neural network.
-
-        Inputs
-        ------
-        S: list of N x T numpy arrays, each of which contains spiking data for N neurons over T times
-
-        Z: list of M x T numpy arrays, each of which contains behavioral data for M behavioral variables over T times
-            
-        Parameters
-        ----------
-        net: Keras sequential neural network model
-            
-        """
-
+    def fit(self, spikes, behavior):
         # Unpack attributes.
         Delta = self.Delta
         tau_prime = self.tau_prime
@@ -63,35 +35,35 @@ class FeedforwardNetwork(object):
         num_layers = self.num_layers
         frac_dropout = self.frac_dropout
         num_epochs = self.num_epochs
-
-        # Bin spikes.
-        S = [bin_spikes(sp, Delta) for sp in S]
+    
+        # Bin spikes
+        # * list of N x T numpy arrays, each of which contains spiking data for N neurons over T times
+        spikes = [bin_spikes(sp, Delta) for sp in spikes]
+        
+        # Downsample kinematics to bin width.
+        # * list of M x T numpy arrays, each of which contains behavioral data for M behavioral variables over T times
+        behavior = [z[:,Delta-1::Delta] for z in behavior]
 
         # Reformat observations to include recent history.
-        X = [append_history(s, tau_prime) for s in S]
-
-        # Downsample kinematics to bin width.
-        Z = [z[:,Delta-1::Delta] for z in Z]
+        X = [append_history(s, tau_prime) for s in spikes]
 
         # Remove samples on each trial for which sufficient spiking history doesn't exist.
         X = [x[:,tau_prime:,:] for x in X]
-        Z = [z[:,tau_prime:] for z in Z]
+        behavior = [z[:,tau_prime:] for z in behavior]
 
-        # Concatenate X and Z across trials (in time bin dimension) and rearrange dimensions.
+        # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
+        # 将X的list中的axis=1(times)给合到一起, 然后再调整为第一个维度
         X = np.moveaxis(np.concatenate(X,axis=1), [0, 1, 2], [1, 0, 2])
-        Z = np.concatenate(Z, axis=1).T
+        behavior = np.concatenate(behavior, axis=1).T
 
-        # Z-score inputs.
-        X_mu = np.mean(X, axis=0)
-        X_sigma = np.std(X, axis=0)
-        X = (X - X_mu) / X_sigma
-        self.X_mu = X_mu
-        self.X_sigma = X_sigma
+        # Z-score 归一化
+        self.X_mu = np.mean(X, axis=0)
+        self.X_sigma = np.std(X, axis=0)
+        X = (X - self.X_mu) / self.X_sigma
 
         # Zero-center outputs.
-        Z_mu = np.mean(Z, axis=0)
-        Z = Z - Z_mu
-        self.Z_mu = Z_mu
+        self.Z_mu = np.mean(behavior, axis=0)
+        behavior = behavior - self.Z_mu
 
         # Construct feedforward network model.
         net = tf.keras.Sequential(name='Feedforward_Network')
@@ -99,14 +71,14 @@ class FeedforwardNetwork(object):
         for layer in range(num_layers): # hidden layers
             net.add(layers.Dense(num_units, activation='relu'))
             if frac_dropout!=0: net.add(layers.Dropout(frac_dropout))
-        net.add(layers.Dense(Z.shape[1], activation='linear')) # output layer
+        net.add(layers.Dense(behavior.shape[1], activation='linear')) # output layer
         net.compile(optimizer="Adam", loss="mse", metrics="mse")
 
         # Fit model.
-        net.fit(X, Z, epochs=num_epochs)
+        net.fit(X, behavior, epochs=num_epochs)
         self.net = net
 
-    def predict(self, S):
+    def predict(self, Spikes):
 
         """
         Predict behavior with trained feedforward neural network.
@@ -130,10 +102,10 @@ class FeedforwardNetwork(object):
         net = self.net
 
         # Store each trial's length.
-        T = [s.shape[1] for s in S]
+        T = [s.shape[1] for s in Spikes]
 
         # Bin spikes.
-        S = [bin_spikes(sp, Delta) for sp in S]
+        S = [bin_spikes(sp, Delta) for sp in Spikes]
 
         # Store each trial's bin length.
         T_prime = [s.shape[1] for s in S]
