@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
             # Store performance in 'Results' dictionary.
             store_results(R2, val_var['behavior'], val_var['estimate'],
-                HyperParams, target_var, train_data)
+                HyperParams, Results[model_name], target_var)
 
 # Save results.
 save_data(Results, RUN)
