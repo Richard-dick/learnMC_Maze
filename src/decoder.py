@@ -127,7 +127,8 @@ class FeedforwardNetwork(object):
         # X = [x[:,tau_prime:,:] for x in append_binned_spikes]
 
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
-        X = np.concatenate(X,axis=1)
+        X = np.moveaxis(np.concatenate(X, axis=1), [0, 1], [1, 0])
+        X = X.reshape(len(X), X[0].shape[0], 1)
 
         # Z-score inputs.
         
@@ -209,17 +210,18 @@ class GRU(object):
         S = [bin_spikes(sp, Bin_Size) for sp in S]
 
         # Reformat observations to include recent history.
-        X = [append_history(s, tau_prime) for s in S]
+        # X = [append_history(s, tau_prime) for s in S]
 
         # Downsample kinematics to bin width.
         Z = [z[:,Bin_Size-1::Bin_Size] for z in Z]
 
         # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        X = [x[:,tau_prime:,:] for x in X]
-        Z = [z[:,tau_prime:] for z in Z]
+        # X = [x[:,tau_prime:,:] for x in X]
+        # Z = [z[:,tau_prime:] for z in Z]
 
         # Concatenate X and Z across trials (in time bin dimension) and rearrange dimensions.
-        X = np.concatenate(X,axis=1)
+        X = np.moveaxis(np.concatenate(S,axis=1), [0, 1], [1, 0])
+        X = X.reshape(len(X), X[0].shape[0], 1)
         Z = np.concatenate(Z, axis=1).T
 
         # Z-score inputs.
