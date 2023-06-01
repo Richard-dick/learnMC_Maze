@@ -220,8 +220,12 @@ class GRU(object):
         # Z = [z[:,tau_prime:] for z in Z]
 
         # Concatenate X and Z across trials (in time bin dimension) and rearrange dimensions.
-        X = np.moveaxis(np.concatenate(S,axis=1), [0, 1], [1, 0])
-        X = X.reshape(len(X), X[0].shape[0], 1)
+        X = np.concatenate(S, axis=1).T
+        X = X.reshape(X.shape[0], 1, X.shape[1])
+        # print(X.shape)
+        # exit(0)
+        # X = np.moveaxis(X, [0, 1, 2], [2, 0, 1])
+        # X = X.reshape(len(X), X[0].shape[0], 1)
         Z = np.concatenate(Z, axis=1).T
 
         # Z-score inputs.
@@ -284,10 +288,14 @@ class GRU(object):
         # X = [append_history(s, tau_prime) for s in S]
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        # X = [x[:,tau_prime:,:] for x in X]
+        X = [x[:,tau_prime:,:] for x in X]
 
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
-        X = np.moveaxis(np.concatenate(S, axis=1), [0, 1], [1, 0])
+        X = np.concatenate(S, axis=1).T
+        X = X.reshape(X.shape[0], 1, X.shape[1])
+        # print(X.shape)
+        # exit(0)
+        # X = np.moveaxis(X, [0, 1, 2], [2, 0, 1])
 
         # Z-score inputs.
         X = (X - X_mu) / X_sigma
@@ -303,7 +311,7 @@ class GRU(object):
         Z_hat = [Z.T for Z in Z_hat]
 
         # Add NaNs where predictions couldn't be made due to insufficient spiking history.
-        # Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
+        Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
 
         # Return estimate to original time scale.
         Z_hat = [zero_order_hold(Z,Bin_Size) for Z in Z_hat]
