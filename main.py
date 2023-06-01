@@ -24,14 +24,16 @@ CONFIG_PATH = 'config/mc_maze.yaml'
 
 OPTIMIZE = False
 
-RUN = 'test-1'
+RUN = 'test-2'
 
 Results = {m: dict() for m in MODEL}
+
+TRACE = 10
 
 if __name__ == '__main__':
     if not PICKLIZED:
         picklize("MC_Maze")
-    train_data, val_data = load_data("MC_Maze", DIV_FRAC)
+    train_data, val_data = load_data("MC_Maze", DIV_FRAC, )
     
     with open(CONFIG_PATH, 'r') as file:
         config = yaml.safe_load(file)
@@ -49,7 +51,7 @@ if __name__ == '__main__':
             # which sufficient spiking history did not exist for all methods.
             tau = HyperParams['Bin_Size']*(HyperParams['tau_prime']+1)-1
             R2 = compute_R2(val_var['behavior'], val_var['estimate'], skip_samples=tau, eval_bin_size=5)
-            print('{} R2: {}, {}'.format(target_var,R2, model_name))
+            print('{} R2: {}, {}'.format(target_var, R2, model_name))
 
             # Store performance in 'Results' dictionary.
             store_results(R2, val_var['behavior'], val_var['estimate'],

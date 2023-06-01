@@ -2,7 +2,7 @@ import numpy as np
 from numpy.linalg import inv, pinv
 from scipy.linalg import solve_discrete_are
 import tensorflow as tf
-import tensorflow.keras.layers as layers
+import tensorflow.python.keras.layers as layers
 from src.utils import bin_spikes, append_history, array2list, zero_order_hold
 import warnings
 
