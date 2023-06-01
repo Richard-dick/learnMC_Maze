@@ -18,7 +18,7 @@ DIV_FRAC = 0.2
 
 VAR_GROUPS:list = ['pos','vel']
 
-MODEL = ['gru', 'ffn']
+MODEL = ['ffn', 'gru']
 
 CONFIG_PATH = 'config/mc_maze.yaml'
 
