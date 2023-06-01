@@ -57,10 +57,17 @@ class FeedforwardNetwork(object):
         # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
         # 将X的list中的axis=1(times)给合到一起(变成1836*36), 然后再调整为第一个维度
         X = np.moveaxis(np.concatenate(X,axis=1), [0, 1], [1, 0])
+        X = X.reshape(len(X), X[0].shape[0], 1)
+        # print(len(X))
+        # print(type(X[0]))
+        # print(X[0].shape)
         behavior = np.concatenate(behavior, axis=1).T
 
         # Z-score 归一化
         self.X_mu = np.mean(X, axis=0)
+        # print(len(self.X_mu))
+        # print(type(self.X_mu[0]))
+        # print(self.X_mu[0].shape)
         self.X_sigma = np.std(X, axis=0)
         X = (X - self.X_mu) / self.X_sigma
 
@@ -123,6 +130,7 @@ class FeedforwardNetwork(object):
         X = np.concatenate(X,axis=1)
 
         # Z-score inputs.
+        
         X = (X - X_mu) / X_sigma
 
         # Generate predictions.
