@@ -13,15 +13,15 @@ ffn:
     kappa: 10
     val_frac: 0.2
   pos:
-    num_units: 546
+    num_units: 335
     num_layers: 6
-    frac_dropout: 0.03
-    num_epochs: 16
+    frac_dropout: 0.4
+    num_epochs: 15
   vel:
-    num_units: 288
+    num_units: 564
     num_layers: 8
-    frac_dropout: 0.02
-    num_epochs: 24
+    frac_dropout: 0.12
+    num_epochs: 15
 gru:
   var_groups: ['pos','vel']
   general:
@@ -36,10 +36,10 @@ gru:
     kappa: 10
     val_frac: 0.2
   pos:
-    num_units: 581
-    frac_dropout: 0.24
-    num_epochs: 22
+    num_units: 320
+    frac_dropout: 0.15
+    num_epochs: 8
   vel:
-    num_units: 532
-    frac_dropout: 0.10
-    num_epochs: 12
+    num_units: 573
+    frac_dropout: 0.01
+    num_epochs: 15

@@ -51,8 +51,8 @@ class FeedforwardNetwork(object):
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
         # # * 现在只需要后36时刻的spikes信息了
-        # X = [abS[:,tau_prime:,:] for abS in appended_binned_spikes]
-        # behavior = [z[:,tau_prime:] for z in behavior]
+        X = [abS[:,tau_prime:] for abS in X]
+        behavior = [z[:,tau_prime:] for z in behavior]
 
         # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
         # 将X的list中的axis=1(times)给合到一起(变成1836*36), 然后再调整为第一个维度
@@ -124,7 +124,7 @@ class FeedforwardNetwork(object):
         # append_binned_spikes = [append_history(s, tau_prime) for s in binned_spikes]
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        # X = [x[:,tau_prime:,:] for x in append_binned_spikes]
+        X = [x[:,tau_prime:] for x in X]
 
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
         X = np.moveaxis(np.concatenate(X, axis=1), [0, 1], [1, 0])
@@ -141,11 +141,11 @@ class FeedforwardNetwork(object):
         Z_hat += Z_mu
 
         # Split Z_hat back into trials and transpose kinematic arrays.
-        Z_hat = array2list(Z_hat, np.array(T_prime), axis=0)
+        Z_hat = array2list(Z_hat, np.array(T_prime)-tau_prime, axis=0)
         Z_hat = [Z.T for Z in Z_hat]
 
         # Add NaNs where predictions couldn't be made due to insufficient spiking history.
-        # Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
+        Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
 
         # Return estimate to original time scale.
         Z_hat = [zero_order_hold(Z,Bin_Size) for Z in Z_hat]
@@ -216,17 +216,19 @@ class GRU(object):
         Z = [z[:,Bin_Size-1::Bin_Size] for z in Z]
 
         # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        # X = [x[:,tau_prime:,:] for x in X]
-        # Z = [z[:,tau_prime:] for z in Z]
+        X = [x[:,tau_prime:] for x in S]
+        Z = [z[:,tau_prime:] for z in Z]
 
         # Concatenate X and Z across trials (in time bin dimension) and rearrange dimensions.
-        X = np.concatenate(S, axis=1).T
+        X = np.concatenate(X, axis=1).T
         X = X.reshape(X.shape[0], 1, X.shape[1])
         # print(X.shape)
         # exit(0)
         # X = np.moveaxis(X, [0, 1, 2], [2, 0, 1])
         # X = X.reshape(len(X), X[0].shape[0], 1)
         Z = np.concatenate(Z, axis=1).T
+        # print(Z.shape)
+        # exit(0)
 
         # Z-score inputs.
         X_mu = np.mean(X, axis=0)
@@ -249,23 +251,13 @@ class GRU(object):
         net.compile(optimizer="RMSprop", loss="mse", metrics="mse")
 
         # Fit model.
+        # print("fit:")
+        # print(X.shape)
+        # print(Z.shape)
         net.fit(X, Z, epochs=num_epochs)
         self.net = net
 
     def predict(self, S):
-
-        """
-        Predict behavior with trained GRU.
-
-        Inputs
-        ------
-        S: list of N x T numpy arrays, each of which contains spiking data for N neurons over T times
-
-        Outputs
-        -------
-        Z_hat: list of M x T numpy arrays, each of which contains decoded behavioral data for M behavioral variables over T times
-   
-        """
 
         # Unpack attributes.
         Bin_Size = self.Bin_Size
@@ -288,10 +280,10 @@ class GRU(object):
         # X = [append_history(s, tau_prime) for s in S]
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        X = [x[:,tau_prime:,:] for x in X]
+        X = [x[:,tau_prime:] for x in S]
 
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
-        X = np.concatenate(S, axis=1).T
+        X = np.concatenate(X, axis=1).T
         X = X.reshape(X.shape[0], 1, X.shape[1])
         # print(X.shape)
         # exit(0)
@@ -302,12 +294,15 @@ class GRU(object):
 
         # Generate predictions.
         Z_hat = net.predict(X)
+        # print("predict:")
+        # print(X.shape)
+        # print(Z_hat.shape)
 
         # Add mean back to outputs.
         Z_hat += Z_mu
 
         # Split Z_hat back into trials and transpose kinematic arrays.
-        Z_hat = array2list(Z_hat, np.array(T_prime), axis=0)
+        Z_hat = array2list(Z_hat, np.array(T_prime)-tau_prime, axis=0)
         Z_hat = [Z.T for Z in Z_hat]
 
         # Add NaNs where predictions couldn't be made due to insufficient spiking history.
@@ -317,5 +312,9 @@ class GRU(object):
         Z_hat = [zero_order_hold(Z,Bin_Size) for Z in Z_hat]
         # Z_hat = [np.hstack((np.full((Z.shape[0],Bin_Size-1), np.nan), Z)) for Z in Z_hat]
         # Z_hat = [z[:,:t] for z,t in zip(Z_hat, T)]
+        
+        print("process:")
+        # print(len(Z_hat))
+        # print(Z_hat[0].shape)
 
         return Z_hat

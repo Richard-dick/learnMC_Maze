@@ -18,13 +18,13 @@ DIV_FRAC = 0.2
 
 VAR_GROUPS:list = ['pos','vel']
 
-MODEL = ['gru']
+MODEL = ['ffn']
 
 CONFIG_PATH = 'config/mc_maze.yaml'
 
-OPTIMIZE = False
+OPTIMIZE = True
 
-RUN = 'test-2'
+RUN = 'no_tau-1'
 
 Results = {m: dict() for m in MODEL}
 
@@ -33,7 +33,7 @@ TRACE = 10
 if __name__ == '__main__':
     if not PICKLIZED:
         picklize("MC_Maze")
-    train_data, val_data = load_data("MC_Maze", DIV_FRAC, )
+    train_data, val_data = load_data("MC_Maze", DIV_FRAC)
     
     with open(CONFIG_PATH, 'r') as file:
         config = yaml.safe_load(file)
