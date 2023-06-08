@@ -51,8 +51,10 @@ class FeedforwardNetwork(object):
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
         # # * 现在只需要后36时刻的spikes信息了
-        X = [abS[:,tau_prime:] for abS in X]
-        behavior = [z[:,tau_prime:] for z in behavior]
+        X = [abS[:,tau_prime:-tau_prime] for abS in X]
+        behavior = [z[:,tau_prime:-tau_prime] for z in behavior]
+        # print(X[0].shape)
+        # print(behavior[0].shape)
 
         # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
         # 将X的list中的axis=1(times)给合到一起(变成1836*36), 然后再调整为第一个维度
@@ -124,7 +126,8 @@ class FeedforwardNetwork(object):
         # append_binned_spikes = [append_history(s, tau_prime) for s in binned_spikes]
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        X = [x[:,tau_prime:] for x in X]
+        X = [x[:,tau_prime:-tau_prime] for x in X]
+        # print(X[0].shape)
 
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
         X = np.moveaxis(np.concatenate(X, axis=1), [0, 1], [1, 0])
@@ -141,14 +144,18 @@ class FeedforwardNetwork(object):
         Z_hat += Z_mu
 
         # Split Z_hat back into trials and transpose kinematic arrays.
-        Z_hat = array2list(Z_hat, np.array(T_prime)-tau_prime, axis=0)
+        Z_hat = array2list(Z_hat, np.array(T_prime)-2*tau_prime, axis=0)
         Z_hat = [Z.T for Z in Z_hat]
 
         # Add NaNs where predictions couldn't be made due to insufficient spiking history.
-        Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
+        # print(Z_hat[0].shape)
+        Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z, np.full((Z.shape[0],tau_prime), np.nan))) for Z in Z_hat]
+        # Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
+        # print(Z_hat[0].shape)
 
         # Return estimate to original time scale.
         Z_hat = [zero_order_hold(Z,Bin_Size) for Z in Z_hat]
+        # print(Z_hat[0].shape)
         # Z_hat = [np.hstack((np.full((Z.shape[0],Bin_Size-1), np.nan), Z)) for Z in Z_hat]
         # Z_hat = [z[:,:t] for z,t in zip(Z_hat, T)]
 

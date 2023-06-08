@@ -24,7 +24,7 @@ CONFIG_PATH = 'config/mc_maze.yaml'
 
 OPTIMIZE = True
 
-RUN = 'no_tau-1'
+RUN = 'double_tau-set'
 
 Results = {m: dict() for m in MODEL}
 

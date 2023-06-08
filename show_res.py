@@ -1,6 +1,6 @@
 import pickle
 
-f = open("results/test-2.pickle", "rb")
+f = open("results/double_tau-set.pickle", "rb")
 
 res = pickle.load(f)
 
