@@ -1,7 +1,7 @@
 ffn:
   var_groups: ['pos','vel']
   general:
-    Bin_Size: 20
+    Bin_Size: 16
     tau_prime: 12
   opt:
     num_units: [50,600]

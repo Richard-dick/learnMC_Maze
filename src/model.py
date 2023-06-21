@@ -1,9 +1,9 @@
 import numpy as np
-from src.decoder import FeedforwardNetwork, GRU
+from src.decoder import FeedforwardNetwork
 from bayes_opt import BayesianOptimization
 from src.utils import partition, compute_R2
 
-def train(S, Z, condition, method, config, optimize_flag):
+def train(S, Z, condition, config, optimize_flag):
     
     if optimize_flag:
         train_idx, val_idx = partition(condition, 0.2)
@@ -12,7 +12,7 @@ def train(S, Z, condition, method, config, optimize_flag):
         Z_train = [Z[i] for i in train_idx]
         Z_val   = [Z[i] for i in val_idx]
         # Optimize hyperparameters.
-        HyperParams = optimize_hyperparams(S_train, S_val, Z_train, Z_val, method, config['general'], config['opt'])
+        HyperParams = optimize_hyperparams(S_train, S_val, Z_train, Z_val, config['general'], config['opt'])
     else :
         # Unpack hyperparameters directly from config.
         HyperParams = config['general'].copy()
@@ -20,15 +20,16 @@ def train(S, Z, condition, method, config, optimize_flag):
         beh_key.remove('general')
         beh_key.remove('opt')
         HyperParams.update(config[beh_key[0]])
-        
-    model = train_specific_model(S, Z, method, HyperParams)
+    
+    model = FeedforwardNetwork(HyperParams)
+    model.fit(S, Z)
     
     return model, HyperParams
     
 
 
 
-def optimize_hyperparams(S_train, S_val, Z_train, Z_val, method, gen_hp, opt_config):
+def optimize_hyperparams(S_train, S_val, Z_train, Z_val, gen_hp, opt_config):
 
     """
     Learn a good set of hyperparameters to use with a particular
@@ -48,8 +49,6 @@ def optimize_hyperparams(S_train, S_val, Z_train, Z_val, method, gen_hp, opt_con
     Z_val: list (1 x number of validation trials) of M x T numpy arrays
         Each element of the list contains behavioral data for M behavioral variables over T times
 
-    method: string indicating the neural decoder to use
-
     gen_hp: dictionary of hyperparameters that are set and won't be optimized
 
     opt_config: dictionary specifying details of Bayesian optimization
@@ -65,10 +64,11 @@ def optimize_hyperparams(S_train, S_val, Z_train, Z_val, method, gen_hp, opt_con
     def evaluate_model(**kwargs):
         
         # Create dictionary of hyperparameters.
-        HyperParams = construct_hyperparams(kwargs, gen_hp, method)
+        HyperParams = construct_hyperparams(kwargs, gen_hp)
 
         # Train model.
-        model = train_specific_model(S_train, Z_train, method, HyperParams)
+        model = FeedforwardNetwork(HyperParams)
+        model.fit(S_train, Z_train)
         
         # Make predictions on validation set.
         Z_val_hat = model.predict(S_val)
@@ -94,11 +94,11 @@ def optimize_hyperparams(S_train, S_val, Z_train, Z_val, method, gen_hp, opt_con
     optimizer = BayesianOptimization(evaluate_model, pbounds, verbose=1)
     optimizer.maximize(init_points=init_points, n_iter=n_iter, kappa=kappa)
     best_params = optimizer.max['params']
-    HyperParams = construct_hyperparams(best_params, gen_hp, method)
+    HyperParams = construct_hyperparams(best_params, gen_hp)
 
     return HyperParams
 
-def construct_hyperparams(optimized_hp, gen_hp, method):
+def construct_hyperparams(optimized_hp, gen_hp):
 
     """
     Construct a unified hyperparameters dictionary.
@@ -111,8 +111,6 @@ def construct_hyperparams(optimized_hp, gen_hp, method):
     gen_hp: dictionary of general hyperparameters that
         were not optimized
 
-    method: string indicating the neural decoder
-
     Outputs
     -------
     HyperParams: dictionary of hyperparameters
@@ -121,43 +119,10 @@ def construct_hyperparams(optimized_hp, gen_hp, method):
 
     # Initialize with general hyperparameters.
     HyperParams = gen_hp.copy()
+    HyperParams['num_units'] = int(optimized_hp['num_units'])
+    HyperParams['num_layers'] = int(optimized_hp['num_layers'])
+    HyperParams['frac_dropout'] = float(optimized_hp['frac_dropout'])
+    HyperParams['num_epochs'] = int(optimized_hp['num_epochs'])
 
-    # Add method-specific hyperparameters.
-    if method == 'wf':
-        HyperParams['lam'] = optimized_hp['lam']
-    elif method == 'kf':
-        HyperParams['lag'] = int(np.round(optimized_hp['lag']/HyperParams['Bin_Size'])*HyperParams['Bin_Size']) # closest multiple of Bin_Size
-    elif method == 'ffn':
-        HyperParams['num_units'] = int(optimized_hp['num_units'])
-        HyperParams['num_layers'] = int(optimized_hp['num_layers'])
-        HyperParams['frac_dropout'] = float(optimized_hp['frac_dropout'])
-        HyperParams['num_epochs'] = int(optimized_hp['num_epochs'])
-    elif method == 'gru':
-        HyperParams['num_units'] = int(optimized_hp['num_units'])
-        HyperParams['frac_dropout'] = float(optimized_hp['frac_dropout'])
-        HyperParams['num_epochs'] = int(optimized_hp['num_epochs'])
-    else:
-        raise NameError('Method not recognized.')
 
     return HyperParams
-
-
-def train_specific_model(S, Z, method, HyperParams):
-
-    # Train model for appropriate method.
-    if method == 'ffn':
-
-        # Fit a feedforward neural network.
-        model = FeedforwardNetwork(HyperParams)
-        model.fit(S, Z)
-
-    elif method == 'gru':
-
-        # Fit a GRU.
-        model = GRU(HyperParams)
-        model.fit(S, Z)
-
-    else:
-        raise NameError('Method not recognized.')
-
-    return model

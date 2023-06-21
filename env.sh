@@ -37,14 +37,17 @@ update_python(){
 
 setup_git(){
     # 克隆仓库
-    apt-get install git-lfs
-    git clone https://github.com/seanmperkins/bci-decoders.git
-    cd bci-decoders/
-    apt install git-lfs
-    git lfs install
-    git lfs pull
-    
-    cd ..
+    # apt-get install git-lfs
+    # git clone https://github.com/seanmperkins/bci-decoders.git
+    # cd bci-decoders/
+    # apt install git-lfs
+    # git lfs install
+    # git lfs pull
+    # cd ..
+
+    # 安装tmux
+    apt-get install tmux
+
     git clone https://github.com/Richard-dick/learnMC_Maze.git
 
     cd learnMC_Maze/
