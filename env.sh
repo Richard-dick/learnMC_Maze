@@ -52,10 +52,11 @@ setup_git(){
     git config --global user.email "you@example.com"
     git config --global user.name "Your Name"
 
-    pip install -r requirement
+    pip install -r requirement.txt
 
     cd data/
-
+    dandi download DANDI:000128/0.220113.0400
+    cd ..
 }
 
 
