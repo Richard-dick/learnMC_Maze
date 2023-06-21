@@ -48,19 +48,19 @@ class FeedforwardNetwork(object):
 
         # Reformat observations to include recent history.
         # ! 现在spike多了一个轴, 用来表示一系列previous的时间, 大小为tau_prime+1
-        # appended_binned_spikes = [append_history(bs, tau_prime) for bs in binned_spikes]
+        appended_binned_spikes = [append_history(bs, tau_prime) for bs in X]
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
         # # * 现在只需要后40时刻的spikes信息了
-        X = [abS[:,tau_prime:] for abS in X]
+        X = [abS[:,tau_prime:,:] for abS in appended_binned_spikes]
         behavior = [z[:,tau_prime:] for z in behavior]
         # print(X[0].shape)
         # print(behavior[0].shape)
 
         # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
         # 将X的list中的axis=1(times)给合到一起(变成1836*40), 然后再调整为第一个维度
-        X = np.moveaxis(np.concatenate(X,axis=1), [0, 1], [1, 0])
-        X = X.reshape(len(X), X[0].shape[0], 1)
+        X = np.moveaxis(np.concatenate(X,axis=1), [0, 1, 2], [1, 0, 2])
+        # X = X.reshape(len(X), X[0].shape[0], 1)
         # print(len(X))
         # print(type(X[0]))
         # print(X[0].shape)
@@ -76,6 +76,7 @@ class FeedforwardNetwork(object):
 
         # Zero-center outputs.
         self.Z_mu = np.mean(behavior, axis=0)
+        # print(self.Z_mu.shape)
         behavior = behavior - self.Z_mu
 
         # Construct feedforward network model.
@@ -124,15 +125,15 @@ class FeedforwardNetwork(object):
         T_prime = [bs.shape[1] for bs in X]
 
         # Reformat observations to include recent history.
-        # append_binned_spikes = [append_history(s, tau_prime) for s in binned_spikes]
+        append_binned_spikes = [append_history(s, tau_prime) for s in X]
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        X = [x[:,tau_prime:] for x in X]
+        X = [x[:,tau_prime:, :] for x in append_binned_spikes]
         # print(X[0].shape)
 
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
-        X = np.moveaxis(np.concatenate(X, axis=1), [0, 1], [1, 0])
-        X = X.reshape(len(X), X[0].shape[0], 1)
+        X = np.moveaxis(np.concatenate(X, axis=1), [0, 1, 2], [1, 0, 2])
+        # X = X.reshape(len(X), X[0].shape[0], 1)
 
         # Z-score inputs.
         
@@ -145,7 +146,7 @@ class FeedforwardNetwork(object):
         Z_hat += Z_mu
 
         # Split Z_hat back into trials and transpose kinematic arrays.
-        Z_hat = array2list(Z_hat, np.array(T_prime)-2*tau_prime, axis=0)
+        Z_hat = array2list(Z_hat, np.array(T_prime)-tau_prime, axis=0)
         Z_hat = [Z.T for Z in Z_hat]
 
         # Add NaNs where predictions couldn't be made due to insufficient spiking history.

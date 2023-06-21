@@ -23,7 +23,7 @@ CONFIG_PATH = 'config/mc_maze.yaml'
 
 OPTIMIZE = False
 
-RUN = 'double_tau-set'
+RUN = 'history'
 
 Results = dict()
 

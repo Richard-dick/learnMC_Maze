@@ -196,8 +196,8 @@ def compute_R2(Z, Z_hat, skip_samples=0, eval_bin_size=1):
 
     # Remove some samples at the beginning of each
     # trial that were flagged to be skipped.
-    Z = [z[:,skip_samples:-skip_samples] for z in Z]
-    Z_hat = [z[:,skip_samples:-skip_samples] for z in Z_hat]
+    Z = [z[:,skip_samples:] for z in Z]
+    Z_hat = [z[:,skip_samples:] for z in Z_hat]
 
     # Bin kinematics in time.
     Z = [bin_kin(z, eval_bin_size) for z in Z]

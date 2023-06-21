@@ -16,12 +16,12 @@ ffn:
     num_units: 512
     num_layers: 6
     frac_dropout: 0.3
-    num_epochs: 15
+    num_epochs: 3
   vel:
     num_units: 564
     num_layers: 8
     frac_dropout: 0.12
-    num_epochs: 15
+    num_epochs: 3
 gru:
   var_groups: ['pos','vel']
   general:
