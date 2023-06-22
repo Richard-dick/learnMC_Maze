@@ -68,7 +68,7 @@ def append_history(Spikes, tau_prime):
     # Augment matrix with recent history.
     S_aug = np.empty([N, K, tau_prime+1])
     for i in range(-tau_prime,0):
-        # 单论每个时刻, 左边是|i|个nan, 右边是从-50片选到-i的spikes
+        # 单论每个时刻, 左边是|i|个nan, 右边是从 size 片选到-i的spikes
         S_aug[:, :, i+tau_prime] = np.hstack((np.full([N,-i], np.nan), Spikes[:, :i]))
     S_aug[:, :, tau_prime] = Spikes
 
@@ -170,7 +170,7 @@ def pad_to_length(data, T):
 
 ################################################################################
 
-def compute_R2(Z, Z_hat, skip_samples=0, eval_bin_size=1):
+def evaluate(Z, Z_hat, skip_samples=0, eval_bin_size=1):
 
     """
     Compute the coefficients of determination (R2).

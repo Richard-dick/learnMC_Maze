@@ -38,7 +38,7 @@ class FeedforwardNetwork(object):
     
         # Bin spikes
         # * list of N x T numpy arrays, each of which contains spiking data for N neurons over T times
-        # 将list中每个元素(182, 1024)在axis=1(time)维度 bin 操作, 分箱大小为Bin_Size
+        # 将list中每个元素(182, 1024)在axis=1(time)维度 bin 操作, 分箱大小为 16
         # 为(182, 64)
         X = [bin_spikes(sp, Bin_Size) for sp in spikes]
         
@@ -49,6 +49,9 @@ class FeedforwardNetwork(object):
         # Reformat observations to include recent history.
         # ! 现在spike多了一个轴, 用来表示一系列previous的时间, 大小为tau_prime+1
         appended_binned_spikes = [append_history(bs, tau_prime) for bs in X]
+        # print(len(appended_binned_spikes))
+        # print(appended_binned_spikes[0].shape)
+        # exit(0)
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
         # # * 现在只需要后40时刻的spikes信息了
@@ -60,11 +63,13 @@ class FeedforwardNetwork(object):
         # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
         # 将X的list中的axis=1(times)给合到一起(变成1836*40), 然后再调整为第一个维度
         X = np.moveaxis(np.concatenate(X,axis=1), [0, 1, 2], [1, 0, 2])
+        
         # X = X.reshape(len(X), X[0].shape[0], 1)
         # print(len(X))
         # print(type(X[0]))
-        # print(X[0].shape)
+        # print(X.shape)
         behavior = np.concatenate(behavior, axis=1).T
+        # print(behavior.shape)
 
         # Z-score 归一化
         self.X_mu = np.mean(X, axis=0)

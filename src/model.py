@@ -1,7 +1,7 @@
 import numpy as np
 from src.decoder import FeedforwardNetwork
 from bayes_opt import BayesianOptimization
-from src.utils import partition, compute_R2
+from src.utils import partition, evaluate
 
 def train(S, Z, condition, config, optimize_flag):
     
@@ -75,7 +75,7 @@ def optimize_hyperparams(S_train, S_val, Z_train, Z_val, gen_hp, opt_config):
         
         # Return mean R2 across decoded variables.
         tau = HyperParams['Bin_Size']*(HyperParams['tau_prime']+1)-1
-        return np.mean(compute_R2(Z_val, Z_val_hat, skip_samples=tau, eval_bin_size=5))
+        return np.mean(evaluate(Z_val, Z_val_hat, skip_samples=tau, eval_bin_size=5))
     
     # Unpack optimization settings.
     init_points = opt_config['init_points']
