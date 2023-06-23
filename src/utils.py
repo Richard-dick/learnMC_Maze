@@ -49,13 +49,13 @@ def bin_kin(Z, bin_size):
     """
 
     # Get some useful constants.
-    [M, n_time_samples] = Z.shape
+    [M, n_time_samples, tau] = Z.shape
     K = int(n_time_samples/bin_size) # number of time bins
 
     # Average kinematics within bins.
-    Z_bin = np.empty([M, K])
+    Z_bin = np.empty([M, K, tau])
     for k in range(K):
-        Z_bin[:, k] = np.mean(Z[:, k*bin_size:(k+1)*bin_size], axis=1)
+        Z_bin[:, k,:] = np.mean(Z[:, k*bin_size:(k+1)*bin_size,:], axis=1)
 
     return Z_bin
 
@@ -127,14 +127,18 @@ def zero_order_hold(binned_data, bin_size):
     """
     
     # Preallocate unbinned data.
-    n_vars, n_bins = binned_data.shape
-    unbinned_data = np.zeros((n_vars, n_bins*bin_size))
+    # n_vars, n_bins, n_taus = binned_data.shape
+    # unbinned_data = np.zeros((n_vars, n_bins*bin_size, n_taus))
     
     # Upsample data with zero-order hold.
-    for k in range(n_bins):
-        unbinned_data[:,k*bin_size:(k+1)*bin_size] = np.tile(np.reshape(binned_data[:,k],(-1,1)),bin_size)
+    # for k in range(n_bins):
+        # print(binned_data.shape)
+        # tmp = np.tile(binned_data[:,k,:], bin_size)
+        # print(tmp.shape)
+        # unbinned_data[:,k*bin_size:(k+1)*bin_size,:] = np.repeat(binned_data, 16, axis=1)
+        # exit(0)
 
-    return unbinned_data
+    return np.repeat(binned_data, 16, axis=1)
 
 ################################################################################
 
@@ -196,8 +200,12 @@ def evaluate(Z, Z_hat, skip_samples=0, eval_bin_size=1):
 
     # Remove some samples at the beginning of each
     # trial that were flagged to be skipped.
-    Z = [z[:,skip_samples:] for z in Z]
-    Z_hat = [z[:,skip_samples:] for z in Z_hat]
+    # print(Z_hat.shape)
+    # print(Z.shape)
+    Z = [append_history(beh, 12) for beh in Z]
+    Z = [z[:,skip_samples:,:] for z in Z]
+    
+    Z_hat = [z[:,skip_samples:,:] for z in Z_hat]
 
     # Bin kinematics in time.
     Z = [bin_kin(z, eval_bin_size) for z in Z]
@@ -206,12 +214,16 @@ def evaluate(Z, Z_hat, skip_samples=0, eval_bin_size=1):
     # Concatenate lists.
     Z = np.concatenate(Z,1)
     Z_hat = np.concatenate(Z_hat,1)
+    # print(Z.shape)
 
     # Compute residual sum of squares.
     SS_res = np.sum((Z - Z_hat)**2, axis=1)
+    # print(SS_res)
+    
+    Z_mu = [np.mean(Z, axis=1)] * Z.shape[1]
 
     # Compute total sum of squares.
-    Z_mu = np.transpose([np.mean(Z, axis=1)] * Z.shape[1])
+    Z_mu = np.transpose(Z_mu,[1,0,2])
     SS_tot = np.sum((Z - Z_mu)**2, axis=1)
 
     # Compute coefficient of determination.

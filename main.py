@@ -23,7 +23,7 @@ CONFIG_PATH = 'config/mc_maze.yaml'
 
 OPTIMIZE = False
 
-RUN = 'tau_20'
+RUN = 'first_trace'
 
 Results = dict()
 
@@ -46,16 +46,15 @@ if __name__ == '__main__':
         
         val_var['estimate'] = model.predict(val_var['spikes'])
         
-        # model.evaluate()
         # Evaluate performance, excluding the first tau samples for
         # which sufficient spiking history did not exist for all methods.
         tau = HyperParams['Bin_Size']*(HyperParams['tau_prime']+1)-1
-        R2 = evaluate(val_var['behavior'], val_var['estimate'], skip_samples=tau, eval_bin_size=5)
+        R2 = evaluate(val_var['behavior'], val_var['estimate'], skip_samples=tau, eval_bin_size=8)
+        
         print('{} R2: {}'.format(target_var, R2))
 
         # Store performance in 'Results' dictionary.
-        store_results(R2, val_var['behavior'], val_var['estimate'],
-            HyperParams, Results, target_var)
+        store_results(R2, val_var['behavior'], val_var['estimate'], HyperParams, Results, target_var)
 
 # Save results.
 save_data(Results, RUN)

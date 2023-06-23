@@ -44,6 +44,8 @@ class FeedforwardNetwork(object):
         
         # Downsample kinematics to bin width.
         # * list of M x T numpy arrays, each of which contains behavioral data for M behavioral variables over T times
+        # print("raw_behavior")
+        # print(behavior[0].shape)
         behavior = [b[:,Bin_Size-1::Bin_Size] for b in behavior]
 
         # Reformat observations to include recent history.
@@ -52,6 +54,7 @@ class FeedforwardNetwork(object):
         # print(len(appended_binned_spikes))
         # print(appended_binned_spikes[0].shape)
         # exit(0)
+        behavior = [append_history(beh, tau_prime//2) for beh in behavior]
 
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
         # # * 现在只需要后40时刻的spikes信息了
@@ -68,8 +71,11 @@ class FeedforwardNetwork(object):
         # print(len(X))
         # print(type(X[0]))
         # print(X.shape)
-        behavior = np.concatenate(behavior, axis=1).T
+        # print(X[0][0].shape)
+        behavior = np.moveaxis(np.concatenate(behavior,axis=1), [0, 1, 2], [1, 0, 2])
         # print(behavior.shape)
+        # exit(0)
+        
 
         # Z-score 归一化
         self.X_mu = np.mean(X, axis=0)
@@ -83,6 +89,10 @@ class FeedforwardNetwork(object):
         self.Z_mu = np.mean(behavior, axis=0)
         # print(self.Z_mu.shape)
         behavior = behavior - self.Z_mu
+        
+        out_shape = [behavior.shape[1], behavior.shape[2]]
+        # print(out_shape)
+        # exit(0)
 
         # Construct feedforward network model.
         net = tf.keras.Sequential(name='Feedforward_Network')
@@ -90,7 +100,10 @@ class FeedforwardNetwork(object):
         for layer in range(num_layers): # hidden layers
             net.add(layers.Dense(num_units, activation='relu'))
             if frac_dropout!=0: net.add(layers.Dropout(frac_dropout))
-        net.add(layers.Dense(behavior.shape[1], activation='linear')) # output layer
+        # net.add(layers.Dense(out_shape, activation='linear')) # output layer
+        net.add(layers.Dense(out_shape[0]*out_shape[1], activation='linear')) 
+        # 重塑输出张量的形状为 [1836, 2, 13]
+        net.add(layers.Reshape((out_shape[0], out_shape[1]))) 
         net.compile(optimizer="Adam", loss="mse", metrics="mse")
 
         # Fit model.
@@ -146,24 +159,32 @@ class FeedforwardNetwork(object):
 
         # Generate predictions.
         Z_hat = net.predict(X)
+        
+        # print(Z_hat.shape)
 
         # Add mean back to outputs.
         Z_hat += Z_mu
 
         # Split Z_hat back into trials and transpose kinematic arrays.
         Z_hat = array2list(Z_hat, np.array(T_prime)-tau_prime, axis=0)
-        Z_hat = [Z.T for Z in Z_hat]
+        # print(len(Z_hat))
+        # print(Z_hat[0].shape)
+        # exit(0)
+        Z_hat = [np.transpose(Z, (1, 0, 2)) for Z in Z_hat]
+        # print(Z_hat[0].shape)
 
         # Add NaNs where predictions couldn't be made due to insufficient spiking history.
         # print(Z_hat[0].shape)
-        Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
+        Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime, Z.shape[2]), np.nan), Z)) for Z in Z_hat]
         # Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
+        # print(Z_hat[0].shape)
         # print(Z_hat[0].shape)
 
         # Return estimate to original time scale.
-        Z_hat = [zero_order_hold(Z,Bin_Size) for Z in Z_hat]
+        Z_hat = [zero_order_hold(Z, Bin_Size) for Z in Z_hat]
         # print(Z_hat[0].shape)
         # Z_hat = [np.hstack((np.full((Z.shape[0],Bin_Size-1), np.nan), Z)) for Z in Z_hat]
         # Z_hat = [z[:,:t] for z,t in zip(Z_hat, T)]
+        # print(Z_hat[0].shape)
 
         return Z_hat
