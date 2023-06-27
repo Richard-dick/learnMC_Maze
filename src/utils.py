@@ -76,6 +76,22 @@ def append_history(Spikes, tau_prime):
 
 ################################################################################
 
+def append_future(Spikes, tau_prime):
+    # Get some useful constants.
+    [N, K] = Spikes.shape # [number of neurons, number of bins]
+
+    # Augment matrix with recent history.
+    S_aug = np.empty([N, K, tau_prime+1])
+    # S_aug[:, :, 0] = Spikes
+    for i in range(0, tau_prime+1):
+        # 单论每个时刻, 左边是|i|个nan, 右边是从 size 片选到-i的spikes
+        S_aug[:, :, i] = np.hstack((Spikes[:, i:], np.full([N,i], np.nan)))
+    # S_aug[:, :, tau_prime] = Spikes
+
+    return S_aug
+
+################################################################################
+
 def array2list(array, sizes, axis):
 
     """
@@ -111,34 +127,7 @@ def array2list(array, sizes, axis):
 
 def zero_order_hold(binned_data, bin_size):
 
-    """
-    Upsample data with zero-order hold.
-
-    Inputs
-    ------
-    binned_data: numpy array (variables x bins)
-
-    bin_size: number of samples that were pooled into each time bin
-
-    Outputs
-    -------
-    unbinned_data: numpy array of zero-order-held data (variables x time)
-   
-    """
-    
-    # Preallocate unbinned data.
-    # n_vars, n_bins, n_taus = binned_data.shape
-    # unbinned_data = np.zeros((n_vars, n_bins*bin_size, n_taus))
-    
-    # Upsample data with zero-order hold.
-    # for k in range(n_bins):
-        # print(binned_data.shape)
-        # tmp = np.tile(binned_data[:,k,:], bin_size)
-        # print(tmp.shape)
-        # unbinned_data[:,k*bin_size:(k+1)*bin_size,:] = np.repeat(binned_data, 16, axis=1)
-        # exit(0)
-
-    return np.repeat(binned_data, 16, axis=1)
+    return np.repeat(binned_data, bin_size, axis=1)
 
 ################################################################################
 
@@ -174,59 +163,4 @@ def pad_to_length(data, T):
 
 ################################################################################
 
-def evaluate(Z, Z_hat, skip_samples=0, eval_bin_size=1):
 
-    """
-    Compute the coefficients of determination (R2).
-
-    Inputs
-    ------
-    Z: list of ground truth matrices (behaviors x observations)
-
-    Z_hat: list of predicted values matrices (behaviors x observations)
-
-    skip_samples: number of observations to exclude at the start of each trial
-        Methods that generate predictions causally may not have predictions
-        for the first few bins of a trial. This input allows these bins to
-        be excluded from the R2 computation.
-
-    eval_bin_size: number of observations to bin in time (by averaging) before computing R2
-
-    Outputs
-    -------
-    R2: numpy array of R2s (one per behavioral variable)
-
-    """
-
-    # Remove some samples at the beginning of each
-    # trial that were flagged to be skipped.
-    # print(Z_hat.shape)
-    # print(Z.shape)
-    Z = [append_history(beh, 12) for beh in Z]
-    Z = [z[:,skip_samples:,:] for z in Z]
-    
-    Z_hat = [z[:,skip_samples:,:] for z in Z_hat]
-
-    # Bin kinematics in time.
-    Z = [bin_kin(z, eval_bin_size) for z in Z]
-    Z_hat = [bin_kin(z, eval_bin_size) for z in Z_hat]
-
-    # Concatenate lists.
-    Z = np.concatenate(Z,1)
-    Z_hat = np.concatenate(Z_hat,1)
-    # print(Z.shape)
-
-    # Compute residual sum of squares.
-    SS_res = np.sum((Z - Z_hat)**2, axis=1)
-    # print(SS_res)
-    
-    Z_mu = [np.mean(Z, axis=1)] * Z.shape[1]
-
-    # Compute total sum of squares.
-    Z_mu = np.transpose(Z_mu,[1,0,2])
-    SS_tot = np.sum((Z - Z_mu)**2, axis=1)
-
-    # Compute coefficient of determination.
-    R2 = 1 - SS_res/SS_tot
-
-    return R2

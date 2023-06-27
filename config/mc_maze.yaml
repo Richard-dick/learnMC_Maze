@@ -2,7 +2,7 @@ ffn:
   var_groups: ['pos','vel']
   general:
     Bin_Size: 16
-    tau_prime: 24
+    tau_prime: 16
   opt:
     num_units: [50,600]
     num_layers: [1,10]

@@ -9,7 +9,6 @@ import pandas as pd
 ## using my func
 from src.format import picklize, load_data, restrict_data, store_results, save_data
 from src.model import train
-from src.utils import evaluate
 
 
 PICKLIZED = True
@@ -23,7 +22,8 @@ CONFIG_PATH = 'config/mc_maze.yaml'
 
 OPTIMIZE = False
 
-RUN = 'first_trace'
+RUN = 'future_trace'
+# RUN = "test"
 
 Results = dict()
 
@@ -48,8 +48,8 @@ if __name__ == '__main__':
         
         # Evaluate performance, excluding the first tau samples for
         # which sufficient spiking history did not exist for all methods.
-        tau = HyperParams['Bin_Size']*(HyperParams['tau_prime']+1)-1
-        R2 = evaluate(val_var['behavior'], val_var['estimate'], skip_samples=tau, eval_bin_size=8)
+        
+        R2 = model.evaluate(val_var['behavior'], val_var['estimate'],  eval_bin_size=8)
         
         print('{} R2: {}'.format(target_var, R2))
 
