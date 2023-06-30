@@ -15,15 +15,15 @@ PICKLIZED = True
 
 DIV_FRAC = 0.2
 
-VAR_GROUPS:list = ['pos','vel']
+VAR_GROUPS:list = ['pos']
 # MODEL = 'ffn'
 
 CONFIG_PATH = 'config/mc_maze.yaml'
 
 OPTIMIZE = False
 
-RUN = 'future_trace'
-# RUN = "test"
+# RUN = 'future_trace'
+RUN = "test"
 
 Results = dict()
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
         # Evaluate performance, excluding the first tau samples for
         # which sufficient spiking history did not exist for all methods.
         
-        R2 = model.evaluate(val_var['behavior'], val_var['estimate'],  eval_bin_size=8)
+        R2 = model.evaluate(val_var['behavior'], val_var['estimate'],  eval_bin_size=8, visulize=True, save_dir=RUN)
         
         print('{} R2: {}'.format(target_var, R2))
 

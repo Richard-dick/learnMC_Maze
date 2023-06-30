@@ -4,7 +4,9 @@ from scipy.linalg import solve_discrete_are
 import tensorflow as tf
 import tensorflow.python.keras.layers as layers
 from src.utils import bin_spikes, append_history, array2list, zero_order_hold, append_future, bin_kin
+import matplotlib.pyplot as plt
 import warnings
+import os
 
 
 HISTORY = False
@@ -37,7 +39,6 @@ class FeedforwardNetwork(object):
         frac_dropout = self.frac_dropout
         num_epochs = self.num_epochs
     
-        # Bin spikes
         # * list of N x T numpy arrays, each of which contains spiking data for N neurons over T times
         # 将list中每个元素(182, 1024)在axis=1(time)维度 bin 操作, 分箱大小为 16
         # 为(182, 64)
@@ -45,15 +46,13 @@ class FeedforwardNetwork(object):
         
         # Downsample kinematics to bin width.
         # * list of M x T numpy arrays, each of which contains behavioral data for M behavioral variables over T times
-        # print("raw_behavior")
-        # print(behavior[0].shape)
         behavior = [b[:,Bin_Size-1::Bin_Size] for b in behavior]
 
         # Reformat observations to include recent history.
         # ! 现在spike多了一个轴, 用来表示一系列previous的时间, 大小为tau_prime+1
-        appended_binned_spikes = [append_history(bs, tau_prime) for bs in X]
-        # print(len(appended_binned_spikes))
-        # print(appended_binned_spikes[0].shape)
+        appended_spikes = [append_history(bs, tau_prime) for bs in X]
+        # print(len(appended_spikes))
+        # print(appended_spikes[0].shape)
         # exit(0)
         if HISTORY: # past_mode
             behavior = [append_history(beh, tau_prime//2) for beh in behavior]
@@ -63,10 +62,10 @@ class FeedforwardNetwork(object):
         # # Remove samples on each trial for which sufficient spiking history doesn't exist.
         # # * 现在只需要后40时刻的spikes信息了
         if HISTORY:
-            X = [abS[:,tau_prime:,:] for abS in appended_binned_spikes]
+            X = [abS[:,tau_prime:,:] for abS in appended_spikes]
             behavior = [z[:,tau_prime:,:] for z in behavior]
         else:
-            X = [abS[:,tau_prime:-tau_prime,:] for abS in appended_binned_spikes]
+            X = [abS[:,tau_prime:-tau_prime,:] for abS in appended_spikes]
             behavior = [z[:,tau_prime:-tau_prime,:] for z in behavior]
         # print(X[0].shape)
         # print(behavior[0].shape)
@@ -115,7 +114,7 @@ class FeedforwardNetwork(object):
         net.compile(optimizer="Adam", loss="mse", metrics="mse")
 
         # Fit model.
-        net.fit(X, behavior, epochs=num_epochs)
+        net.fit(X, behavior, epochs=1)
         self.net = net
 
     def predict(self, Spikes):
@@ -207,12 +206,13 @@ class FeedforwardNetwork(object):
 
         return Z_hat
     
-    def evaluate(self, Z, Z_hat, eval_bin_size=8):
+    def evaluate(self, Z, Z_hat, eval_bin_size=8, visulize = False, save_dir = ""):
         skip_samples = self.Bin_Size*(self.tau_prime+1)-1
         # Remove some samples at the beginning of each
         # trial that were flagged to be skipped.
         # print(Z_hat.shape)
-        # print(Z.shape)
+        # print(len(Z_hat))
+        # print(Z_hat[0].shape)
         if HISTORY:
             Z = [append_history(beh, self.tau_prime // 2) for beh in Z]
             Z = [z[:,skip_samples:,:] for z in Z]
@@ -225,6 +225,27 @@ class FeedforwardNetwork(object):
         # Bin kinematics in time.
         Z = [bin_kin(z, eval_bin_size) for z in Z]
         Z_hat = [bin_kin(z, eval_bin_size) for z in Z_hat]
+        
+        if visulize:
+            vis_item = np.random.randint(0, len(Z))    
+            print("starting visualizing :"+ str(vis_item))
+            save_path = "results/" + save_dir + '/'
+            os.mkdir(save_path)
+            z, z_hat = Z[vis_item], Z_hat[vis_item] 
+            for i in range(z_hat.shape[1]):
+                x,y = z[0,i,:],z[1,i,:]
+                x_hat,y_hat = z_hat[0,i,:],z_hat[1,i,:]
+                plt.cla()
+                
+                plt.plot(x, y, "y-")
+                plt.plot(x_hat,y_hat, "g-")
+                plt.title('第'+str(i)+'轨迹')
+                
+                plt.xlabel('x')
+                plt.ylabel('y')
+                
+                plt.savefig(save_path+str(i)+'.png', format = 'png')
+            
 
         # Concatenate lists.
         Z = np.concatenate(Z,1)

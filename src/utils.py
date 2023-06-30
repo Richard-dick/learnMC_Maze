@@ -61,18 +61,21 @@ def bin_kin(Z, bin_size):
 
 ################################################################################
 
-def append_history(Spikes, tau_prime):
+def append_history(Spikes:np.ndarray, tau_prime:int) -> np.ndarray:
     # Get some useful constants.
     [N, K] = Spikes.shape # [number of neurons, number of bins]
 
-    # Augment matrix with recent history.
-    S_aug = np.empty([N, K, tau_prime+1])
-    for i in range(-tau_prime,0):
-        # 单论每个时刻, 左边是|i|个nan, 右边是从 size 片选到-i的spikes
-        S_aug[:, :, i+tau_prime] = np.hstack((np.full([N,-i], np.nan), Spikes[:, :i]))
-    S_aug[:, :, tau_prime] = Spikes
-
+    S_aug = np.empty([N, K-tau_prime, tau_prime])
+    for i in range(tau_prime):
+        S_aug[:, :, i] = Spikes[:, i:i+tau_prime]
+    
     return S_aug
+    # for i in range(-tau_prime,0):
+    #     # 单论每个时刻, 左边是|i|个nan, 右边是从 size 片选到-i的spikes
+    #     S_aug[:, :, i+tau_prime] = np.hstack((np.full([N,-i], np.nan), Spikes[:, :i]))
+    # S_aug[:, :, tau_prime] = Spikes
+
+    
 
 ################################################################################
 

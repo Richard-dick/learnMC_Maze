@@ -2,3 +2,4 @@
 *.nwb
 *.pickle
 __pycache__/
+*.png
