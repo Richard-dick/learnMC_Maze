@@ -49,7 +49,7 @@ if __name__ == '__main__':
         # Evaluate performance, excluding the first tau samples for
         # which sufficient spiking history did not exist for all methods.
         
-        R2 = model.evaluate(val_var['behavior'], val_var['estimate'],  eval_bin_size=8, visulize=True, save_dir=RUN)
+        R2 = model.evaluate(val_var['behavior'], val_var['estimate'], visulize=True, save_dir=RUN)
         
         print('{} R2: {}'.format(target_var, R2))
 

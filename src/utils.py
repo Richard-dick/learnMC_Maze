@@ -66,53 +66,14 @@ def append_history(Spikes:np.ndarray, tau_prime:int) -> np.ndarray:
     [N, K] = Spikes.shape # [number of neurons, number of bins]
 
     S_aug = np.empty([N, K-tau_prime, tau_prime])
-    for i in range(tau_prime):
-        S_aug[:, :, i] = Spikes[:, i:i+tau_prime]
+    for i in range(K-tau_prime):
+        S_aug[:, i, :] = Spikes[:, i:i+tau_prime]
     
-    return S_aug
-    # for i in range(-tau_prime,0):
-    #     # 单论每个时刻, 左边是|i|个nan, 右边是从 size 片选到-i的spikes
-    #     S_aug[:, :, i+tau_prime] = np.hstack((np.full([N,-i], np.nan), Spikes[:, :i]))
-    # S_aug[:, :, tau_prime] = Spikes
-
-    
-
-################################################################################
-
-def append_future(Spikes, tau_prime):
-    # Get some useful constants.
-    [N, K] = Spikes.shape # [number of neurons, number of bins]
-
-    # Augment matrix with recent history.
-    S_aug = np.empty([N, K, tau_prime+1])
-    # S_aug[:, :, 0] = Spikes
-    for i in range(0, tau_prime+1):
-        # 单论每个时刻, 左边是|i|个nan, 右边是从 size 片选到-i的spikes
-        S_aug[:, :, i] = np.hstack((Spikes[:, i:], np.full([N,i], np.nan)))
-    # S_aug[:, :, tau_prime] = Spikes
-
     return S_aug
 
 ################################################################################
 
 def array2list(array, sizes, axis):
-
-    """
-    Break up a numpy array along a particular axis into a list of arrays.
-
-    Inputs
-    ------
-    array: numpy array to break up
-
-    sizes: vector of sizes for the resulting arrays along the specified axis (should sum to input array size along this axis)
-
-    axis: axis to break up array along
-
-    Outputs
-    -------
-    list_of_arrays: list where each element is a numpy array
-   
-    """
     
     # Get indices indicating where to divide array.
     split_idx = np.cumsum(sizes)

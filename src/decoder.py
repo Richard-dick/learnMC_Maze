@@ -3,7 +3,7 @@ from numpy.linalg import inv, pinv
 from scipy.linalg import solve_discrete_are
 import tensorflow as tf
 import tensorflow.python.keras.layers as layers
-from src.utils import bin_spikes, append_history, array2list, zero_order_hold, append_future, bin_kin
+from src.utils import bin_spikes, append_history, array2list, zero_order_hold, bin_kin
 import matplotlib.pyplot as plt
 import warnings
 import os
@@ -51,55 +51,34 @@ class FeedforwardNetwork(object):
         # Reformat observations to include recent history.
         # ! 现在spike多了一个轴, 用来表示一系列previous的时间, 大小为tau_prime+1
         appended_spikes = [append_history(bs, tau_prime) for bs in X]
-        # print(len(appended_spikes))
         # print(appended_spikes[0].shape)
         # exit(0)
-        if HISTORY: # past_mode
-            behavior = [append_history(beh, tau_prime//2) for beh in behavior]
-        else: #future_mode
-            behavior = [append_future(beh, tau_prime//2) for beh in behavior]
 
-        # # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        # # * 现在只需要后40时刻的spikes信息了
-        if HISTORY:
-            X = [abS[:,tau_prime:,:] for abS in appended_spikes]
-            behavior = [z[:,tau_prime:,:] for z in behavior]
-        else:
-            X = [abS[:,tau_prime:-tau_prime,:] for abS in appended_spikes]
-            behavior = [z[:,tau_prime:-tau_prime,:] for z in behavior]
-        # print(X[0].shape)
+        behavior = [append_history(beh, tau_prime//4) for beh in behavior]
         # print(behavior[0].shape)
+        # exit(0)
+        appended_spikes = [ bs[:,:-(tau_prime // 4),:] for bs in appended_spikes]
+        behavior = [ beh[:,tau_prime:,:] for beh in behavior]
 
         # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
-        # 将X的list中的axis=1(times)给合到一起(变成1836*40), 然后再调整为第一个维度
-        X = np.moveaxis(np.concatenate(X,axis=1), [0, 1, 2], [1, 0, 2])
-        
-        # X = X.reshape(len(X), X[0].shape[0], 1)
-        # print(len(X))
-        # print(type(X[0]))
-        # print(X.shape)
-        # print(X[0][0].shape)
+        # 将X的list中的axis=1(times)给合到一起, 然后再调整为第一个维度
+        X = np.moveaxis(np.concatenate(appended_spikes,axis=1), [0, 1, 2], [1, 0, 2])
         behavior = np.moveaxis(np.concatenate(behavior,axis=1), [0, 1, 2], [1, 0, 2])
+        # print(X.shape)
         # print(behavior.shape)
         # exit(0)
         
-
         # Z-score 归一化
         self.X_mu = np.mean(X, axis=0)
-        # print(len(self.X_mu))
-        # print(type(self.X_mu[0]))
-        # print(self.X_mu[0].shape)
-        self.X_sigma = np.std(X, axis=0)
-        X = (X - self.X_mu) / self.X_sigma
+        # self.X_sigma = np.std(X, axis=0) + 0.000001
+        # print(self.X_sigma.shape)
+        X = (X - self.X_mu) 
 
         # Zero-center outputs.
         self.Z_mu = np.mean(behavior, axis=0)
-        # print(self.Z_mu.shape)
         behavior = behavior - self.Z_mu
         
         out_shape = [behavior.shape[1], behavior.shape[2]]
-        # print(out_shape)
-        # exit(0)
 
         # Construct feedforward network model.
         net = tf.keras.Sequential(name='Feedforward_Network')
@@ -114,122 +93,72 @@ class FeedforwardNetwork(object):
         net.compile(optimizer="Adam", loss="mse", metrics="mse")
 
         # Fit model.
-        net.fit(X, behavior, epochs=1)
+        net.fit(X, behavior, epochs=num_epochs)
         self.net = net
 
     def predict(self, Spikes):
-
-        """
-        Predict behavior with trained feedforward neural network.
-
-        Inputs
-        ------
-        S: list of N x T numpy arrays, each of which contains spiking data for N neurons over T times
-
-        Outputs
-        -------
-        Z_hat: list of M x T numpy arrays, each of which contains decoded behavioral data for M behavioral variables over T times
-   
-        """
 
         # Unpack attributes.
         Bin_Size = self.Bin_Size
         tau_prime = self.tau_prime
         X_mu = self.X_mu
-        X_sigma = self.X_sigma
         Z_mu = self.Z_mu
         net = self.net
-
-        # Store each trial's length.
-        T = [s.shape[1] for s in Spikes]
 
         # Bin spikes.
         X = [bin_spikes(sp, Bin_Size) for sp in Spikes]
 
         # Store each trial's bin length.
         T_prime = [bs.shape[1] for bs in X]
+        # print(T_prime)
 
         # Reformat observations to include recent history.
         append_binned_spikes = [append_history(s, tau_prime) for s in X]
-        
-        # # Remove samples on each trial for which sufficient spiking history doesn't exist.
-        # # * 现在只需要后40时刻的spikes信息了
-        if HISTORY:
-            X = [abS[:,tau_prime:,:] for abS in append_binned_spikes]
-        else:
-            X = [abS[:,tau_prime:-tau_prime,:] for abS in append_binned_spikes]
-
+        appended_spikes = [ bs[:,:-(tau_prime // 4),:] for bs in append_binned_spikes]
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
-        X = np.moveaxis(np.concatenate(X, axis=1), [0, 1, 2], [1, 0, 2])
-        # X = X.reshape(len(X), X[0].shape[0], 1)
+        X = np.moveaxis(np.concatenate(appended_spikes, axis=1), [0, 1, 2], [1, 0, 2])
 
         # Z-score inputs.
-        
-        X = (X - X_mu) / X_sigma
+        X = (X - X_mu) 
 
         # Generate predictions.
+        # print(X.shape)
         Z_hat = net.predict(X)
         
-        # print(Z_hat.shape)
-
         # Add mean back to outputs.
         Z_hat += Z_mu
 
         # Split Z_hat back into trials and transpose kinematic arrays.
-        if HISTORY:
-            Z_hat = array2list(Z_hat, np.array(T_prime)-tau_prime, axis=0)
-        else:
-            Z_hat = array2list(Z_hat, np.array(T_prime)-2*tau_prime, axis=0)
+        Z_hat = array2list(Z_hat, np.array(T_prime)-tau_prime-(tau_prime // 4), axis=0)
+        
+        Z_hat = [np.transpose(Z, (1, 0, 2)) for Z in Z_hat]
         # print(len(Z_hat))
         # print(Z_hat[0].shape)
         # exit(0)
-        Z_hat = [np.transpose(Z, (1, 0, 2)) for Z in Z_hat]
-        # print(Z_hat[0].shape)
-
-        # Add NaNs where predictions couldn't be made due to insufficient spiking history.
-        # print(Z_hat[0].shape)
-        if HISTORY:
-            Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime, Z.shape[2]), np.nan), Z)) for Z in Z_hat]
-        else:
-            Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime, Z.shape[2]), np.nan), Z, np.full((Z.shape[0],tau_prime, Z.shape[2]), np.nan))) for Z in Z_hat]
-        
-        # Z_hat = [np.hstack((np.full((Z.shape[0],tau_prime), np.nan), Z)) for Z in Z_hat]
-        # print(Z_hat[0].shape)
-        # print(Z_hat[0].shape)
-
-        # Return estimate to original time scale.
-        Z_hat = [zero_order_hold(Z, Bin_Size) for Z in Z_hat]
-        # print(Z_hat[0].shape)
-        # Z_hat = [np.hstack((np.full((Z.shape[0],Bin_Size-1), np.nan), Z)) for Z in Z_hat]
-        # Z_hat = [z[:,:t] for z,t in zip(Z_hat, T)]
-        # print(Z_hat[0].shape)
 
         return Z_hat
     
-    def evaluate(self, Z, Z_hat, eval_bin_size=8, visulize = False, save_dir = ""):
-        skip_samples = self.Bin_Size*(self.tau_prime+1)-1
-        # Remove some samples at the beginning of each
-        # trial that were flagged to be skipped.
-        # print(Z_hat.shape)
-        # print(len(Z_hat))
+    def evaluate(self, Z, Z_hat, visulize = False, save_dir = ""):
+
+        Bin_Size = self.Bin_Size
+        tau_prime = self.tau_prime
+        
+        Z = [b[:,Bin_Size-1::Bin_Size] for b in Z]
+        Z = [append_history(beh, tau_prime//4) for beh in Z]
+        Z = [ beh[:,tau_prime:,:] for beh in Z]
+        
+        # print(Z[0].shape)
         # print(Z_hat[0].shape)
-        if HISTORY:
-            Z = [append_history(beh, self.tau_prime // 2) for beh in Z]
-            Z = [z[:,skip_samples:,:] for z in Z]
-            Z_hat = [z[:,skip_samples:,:] for z in Z_hat]
-        else:
-            Z = [append_future(beh, self.tau_prime // 2) for beh in Z]
-            Z = [z[:,skip_samples:-skip_samples,:] for z in Z]
-            Z_hat = [z[:,skip_samples:-skip_samples,:] for z in Z_hat]
-        
-        # Bin kinematics in time.
-        Z = [bin_kin(z, eval_bin_size) for z in Z]
-        Z_hat = [bin_kin(z, eval_bin_size) for z in Z_hat]
-        
+        # exit(0)
+
+        # 选取一个实验结果的24条轨迹, 画出来
         if visulize:
             vis_item = np.random.randint(0, len(Z))    
             print("starting visualizing :"+ str(vis_item))
             save_path = "results/" + save_dir + '/'
+            if os.path.exists(save_path):
+                import shutil
+                shutil.rmtree(save_path)
             os.mkdir(save_path)
             z, z_hat = Z[vis_item], Z_hat[vis_item] 
             for i in range(z_hat.shape[1]):
@@ -239,30 +168,37 @@ class FeedforwardNetwork(object):
                 
                 plt.plot(x, y, "y-")
                 plt.plot(x_hat,y_hat, "g-")
-                plt.title('第'+str(i)+'轨迹')
+                plt.title('The '+str(i)+' trace')
                 
                 plt.xlabel('x')
                 plt.ylabel('y')
                 
                 plt.savefig(save_path+str(i)+'.png', format = 'png')
+        
+        mse = 0
+        for i in range(len(Z)):
+            error = Z[i] - Z_hat[i]
+            mse_per_round = np.mean(np.square(error), axis=(0, 1))
+            mse = mse + mse_per_round
+        mse = mse / len(Z)
             
 
-        # Concatenate lists.
-        Z = np.concatenate(Z,1)
-        Z_hat = np.concatenate(Z_hat,1)
-        # print(Z.shape)
+        # # Concatenate lists.
+        # Z = np.concatenate(Z,1)
+        # Z_hat = np.concatenate(Z_hat,1)
+        # # print(Z.shape)
 
-        # Compute residual sum of squares.
-        SS_res = np.sum((Z - Z_hat)**2, axis=1)
-        # print(SS_res)
+        # # Compute residual sum of squares.
+        # SS_res = np.sum((Z - Z_hat)**2, axis=1)
+        # # print(SS_res)
         
-        Z_mu = [np.mean(Z, axis=1)] * Z.shape[1]
+        # Z_mu = [np.mean(Z, axis=1)] * Z.shape[1]
 
-        # Compute total sum of squares.
-        Z_mu = np.transpose(Z_mu,[1,0,2])
-        SS_tot = np.sum((Z - Z_mu)**2, axis=1)
+        # # Compute total sum of squares.
+        # Z_mu = np.transpose(Z_mu,[1,0,2])
+        # SS_tot = np.sum((Z - Z_mu)**2, axis=1)
 
-        # Compute coefficient of determination.
-        R2 = 1 - SS_res/SS_tot
+        # # Compute coefficient of determination.
+        # R2 = 1 - SS_res/SS_tot
 
-        return R2
+        return mse
