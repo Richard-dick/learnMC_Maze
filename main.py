@@ -49,12 +49,12 @@ if __name__ == '__main__':
         # Evaluate performance, excluding the first tau samples for
         # which sufficient spiking history did not exist for all methods.
         
-        R2 = model.evaluate(val_var['behavior'], val_var['estimate'], visulize=True, save_dir=RUN)
+        MSE = model.evaluate(val_var['behavior'], val_var['estimate'], visulize=True, save_dir=RUN)
         
-        print('{} R2: {}'.format(target_var, R2))
+        print('{} MSE: {}'.format(target_var, MSE))
 
         # Store performance in 'Results' dictionary.
-        store_results(R2, val_var['behavior'], val_var['estimate'], HyperParams, Results, target_var)
+        store_results(MSE, val_var['behavior'], val_var['estimate'], HyperParams, Results, target_var)
 
 # Save results.
 save_data(Results, RUN)

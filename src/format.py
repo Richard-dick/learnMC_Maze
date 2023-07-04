@@ -94,9 +94,9 @@ def restrict_data(Train:np.array, Test:np.array, var_group:str):
 
     return Train_b, Test_b
 
-def store_results(R2, behavior, behavior_estimate, HyperParams, Results, var_group):
+def store_results(MSE, behavior, behavior_estimate, HyperParams, Results, var_group):
     Results[var_group] = dict()
-    Results[var_group]['R2'] = R2
+    Results[var_group]['MSE'] = MSE
     Results[var_group]['behavior'] = behavior
     Results[var_group]['behavior_estimate'] = behavior_estimate
     Results[var_group]['HyperParams'] = HyperParams.copy()

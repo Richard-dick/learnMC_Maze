@@ -19,8 +19,8 @@ class FeedforwardNetwork(object):
     def __init__(self,HyperParams):
         # number of time points to pool into a time bin
         self.Bin_Size = HyperParams['Bin_Size']
-        # ? number of previous time bins (in addition to the current bin) to use for decoding
-        self.tau_prime = HyperParams['tau_prime']
+        self.spikes_tau_prime = HyperParams['spikes_tau_prime']
+        self.behavior_tau_prime = HyperParams['behavior_tau_prime']
         # number of units per hidden layer
         self.num_units = HyperParams['num_units']
         # number of hidden layers
@@ -33,7 +33,8 @@ class FeedforwardNetwork(object):
     def fit(self, spikes, behavior):
         # Unpack attributes.
         Bin_Size = self.Bin_Size
-        tau_prime = self.tau_prime
+        spikes_tau_prime = self.spikes_tau_prime
+        behavior_tau_prime = self.behavior_tau_prime
         num_units = self.num_units
         num_layers = self.num_layers
         frac_dropout = self.frac_dropout
@@ -50,15 +51,15 @@ class FeedforwardNetwork(object):
 
         # Reformat observations to include recent history.
         # ! 现在spike多了一个轴, 用来表示一系列previous的时间, 大小为tau_prime+1
-        appended_spikes = [append_history(bs, tau_prime) for bs in X]
+        appended_spikes = [append_history(bs, spikes_tau_prime) for bs in X]
         # print(appended_spikes[0].shape)
         # exit(0)
 
-        behavior = [append_history(beh, tau_prime//4) for beh in behavior]
+        behavior = [append_history(beh, behavior_tau_prime) for beh in behavior]
         # print(behavior[0].shape)
         # exit(0)
-        appended_spikes = [ bs[:,:-(tau_prime // 4),:] for bs in appended_spikes]
-        behavior = [ beh[:,tau_prime:,:] for beh in behavior]
+        appended_spikes = [ bs[:,:-behavior_tau_prime,:] for bs in appended_spikes]
+        behavior = [ beh[:,spikes_tau_prime:,:] for beh in behavior]
 
         # Concatenate X and behavior across trials (in time bin dimension) and rearrange dimensions.
         # 将X的list中的axis=1(times)给合到一起, 然后再调整为第一个维度
@@ -100,7 +101,8 @@ class FeedforwardNetwork(object):
 
         # Unpack attributes.
         Bin_Size = self.Bin_Size
-        tau_prime = self.tau_prime
+        spikes_tau_prime = self.spikes_tau_prime
+        behavior_tau_prime = self.behavior_tau_prime
         X_mu = self.X_mu
         Z_mu = self.Z_mu
         net = self.net
@@ -113,8 +115,8 @@ class FeedforwardNetwork(object):
         # print(T_prime)
 
         # Reformat observations to include recent history.
-        append_binned_spikes = [append_history(s, tau_prime) for s in X]
-        appended_spikes = [ bs[:,:-(tau_prime // 4),:] for bs in append_binned_spikes]
+        append_binned_spikes = [append_history(s, spikes_tau_prime) for s in X]
+        appended_spikes = [ bs[:,:-behavior_tau_prime,:] for bs in append_binned_spikes]
         # Concatenate X across trials (in time bin dimension) and rearrange dimensions.
         X = np.moveaxis(np.concatenate(appended_spikes, axis=1), [0, 1, 2], [1, 0, 2])
 
@@ -129,7 +131,7 @@ class FeedforwardNetwork(object):
         Z_hat += Z_mu
 
         # Split Z_hat back into trials and transpose kinematic arrays.
-        Z_hat = array2list(Z_hat, np.array(T_prime)-tau_prime-(tau_prime // 4), axis=0)
+        Z_hat = array2list(Z_hat, np.array(T_prime)-spikes_tau_prime-behavior_tau_prime, axis=0)
         
         Z_hat = [np.transpose(Z, (1, 0, 2)) for Z in Z_hat]
         # print(len(Z_hat))
@@ -141,11 +143,15 @@ class FeedforwardNetwork(object):
     def evaluate(self, Z, Z_hat, visulize = False, save_dir = ""):
 
         Bin_Size = self.Bin_Size
-        tau_prime = self.tau_prime
+        spikes_tau_prime = self.spikes_tau_prime
+        behavior_tau_prime = self.behavior_tau_prime
+        
+        vis_item = np.random.randint(0, len(Z))    
+        x_ref,y_ref = Z[vis_item]
         
         Z = [b[:,Bin_Size-1::Bin_Size] for b in Z]
-        Z = [append_history(beh, tau_prime//4) for beh in Z]
-        Z = [ beh[:,tau_prime:,:] for beh in Z]
+        Z = [append_history(beh, behavior_tau_prime) for beh in Z]
+        Z = [ beh[:,spikes_tau_prime:,:] for beh in Z]
         
         # print(Z[0].shape)
         # print(Z_hat[0].shape)
@@ -153,7 +159,7 @@ class FeedforwardNetwork(object):
 
         # 选取一个实验结果的24条轨迹, 画出来
         if visulize:
-            vis_item = np.random.randint(0, len(Z))    
+            
             print("starting visualizing :"+ str(vis_item))
             save_path = "results/" + save_dir + '/'
             if os.path.exists(save_path):
@@ -165,8 +171,8 @@ class FeedforwardNetwork(object):
                 x,y = z[0,i,:],z[1,i,:]
                 x_hat,y_hat = z_hat[0,i,:],z_hat[1,i,:]
                 plt.cla()
-                
-                plt.plot(x, y, "y-")
+                plt.plot(x_ref, y_ref, "y-")
+                plt.plot(x, y, "r-")
                 plt.plot(x_hat,y_hat, "g-")
                 plt.title('The '+str(i)+' trace')
                 
@@ -178,27 +184,9 @@ class FeedforwardNetwork(object):
         mse = 0
         for i in range(len(Z)):
             error = Z[i] - Z_hat[i]
-            mse_per_round = np.mean(np.square(error), axis=(0, 1))
+            mse_per_round = np.mean(np.square(error), axis=(0,2))
             mse = mse + mse_per_round
         mse = mse / len(Z)
             
-
-        # # Concatenate lists.
-        # Z = np.concatenate(Z,1)
-        # Z_hat = np.concatenate(Z_hat,1)
-        # # print(Z.shape)
-
-        # # Compute residual sum of squares.
-        # SS_res = np.sum((Z - Z_hat)**2, axis=1)
-        # # print(SS_res)
-        
-        # Z_mu = [np.mean(Z, axis=1)] * Z.shape[1]
-
-        # # Compute total sum of squares.
-        # Z_mu = np.transpose(Z_mu,[1,0,2])
-        # SS_tot = np.sum((Z - Z_mu)**2, axis=1)
-
-        # # Compute coefficient of determination.
-        # R2 = 1 - SS_res/SS_tot
 
         return mse

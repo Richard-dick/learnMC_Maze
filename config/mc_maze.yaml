@@ -2,7 +2,8 @@ ffn:
   var_groups: ['pos','vel']
   general:
     Bin_Size: 16
-    tau_prime: 32
+    spikes_tau_prime: 32
+    behavior_tau_prime: 8
   opt:
     num_units: [50,600]
     num_layers: [1,10]
@@ -16,30 +17,9 @@ ffn:
     num_units: 512
     num_layers: 6
     frac_dropout: 0.3
-    num_epochs: 6
+    num_epochs: 9
   vel:
     num_units: 564
     num_layers: 9
     frac_dropout: 0.12
     num_epochs: 12
-gru:
-  var_groups: ['pos','vel']
-  general:
-    Bin_Size: 20
-    tau_prime: 14
-  opt:
-    num_units: [50,600]
-    frac_dropout: [0,0.5]
-    num_epochs: [2,30]
-    init_points: 10
-    n_iter: 10
-    kappa: 10
-    val_frac: 0.2
-  pos:
-    num_units: 320
-    frac_dropout: 0.15
-    num_epochs: 8
-  vel:
-    num_units: 573
-    frac_dropout: 0.01
-    num_epochs: 15
