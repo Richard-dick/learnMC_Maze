@@ -23,7 +23,7 @@ CONFIG_PATH = 'config/mc_maze.yaml'
 OPTIMIZE = False
 
 # RUN = 'future_trace'
-RUN = "test"
+RUN = "32-8-trace"
 
 Results = dict()
 
