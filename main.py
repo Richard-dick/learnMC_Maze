@@ -11,18 +11,16 @@ from src.format import picklize, load_data, restrict_data, store_results, save_d
 from src.model import train
 
 
-PICKLIZED = True
+PICKLIZED = False
 
 DIV_FRAC = 0.2
 
+SPIKE_GROUPS:list = ["spikes", "PMd_spikes", "MI_spikes"]
 VAR_GROUPS:list = ['pos']
 # MODEL = 'ffn'
 
 CONFIG_PATH = 'config/mc_maze.yaml'
 
-OPTIMIZE = False
-
-# RUN = 'future_trace'
 RUN = "32-8-trace"
 
 Results = dict()
@@ -31,10 +29,11 @@ TRACE = 10
 
 if __name__ == '__main__':
     if not PICKLIZED:
-        picklize("MC_Maze")
+        # picklize("MC_Maze_all")
+        picklize("MC_Maze_sep")
         print("picklize over!!")
         exit(0)
-    train_data, val_data = load_data("MC_Maze", DIV_FRAC)
+    train_data, val_data = load_data("MC_Maze_sep", DIV_FRAC)
     
     with open(CONFIG_PATH, 'r') as file:
         config = yaml.safe_load(file)
@@ -42,7 +41,7 @@ if __name__ == '__main__':
     for target_var in VAR_GROUPS:
         model_config = {key:config['ffn'][key] for key in ['general','opt',target_var]}
         train_var, val_var = restrict_data(train_data, val_data, target_var)
-        model, HyperParams = train(train_var['spikes'], train_var['behavior'], train_var['condition'], model_config, OPTIMIZE)
+        model, HyperParams = train(train_var['spikes'], train_var['behavior'], model_config)
         
         val_var['estimate'] = model.predict(val_var['spikes'])
         

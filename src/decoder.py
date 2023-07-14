@@ -9,8 +9,6 @@ import warnings
 import os
 
 
-HISTORY = False
-
 
 ########################## FEEDFORWARD NEURAL NETWORK ##########################
 

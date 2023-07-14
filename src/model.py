@@ -3,23 +3,13 @@ from src.decoder import FeedforwardNetwork
 from bayes_opt import BayesianOptimization
 from src.utils import partition
 
-def train(S, Z, condition, config, optimize_flag):
-    
-    if optimize_flag:
-        train_idx, val_idx = partition(condition, 0.2)
-        S_train = [S[i] for i in train_idx]
-        S_val   = [S[i] for i in val_idx]
-        Z_train = [Z[i] for i in train_idx]
-        Z_val   = [Z[i] for i in val_idx]
-        # Optimize hyperparameters.
-        HyperParams = optimize_hyperparams(S_train, S_val, Z_train, Z_val, config['general'], config['opt'])
-    else :
-        # Unpack hyperparameters directly from config.
-        HyperParams = config['general'].copy()
-        beh_key = list(config.keys())
-        beh_key.remove('general')
-        beh_key.remove('opt')
-        HyperParams.update(config[beh_key[0]])
+def train(S, Z, config):
+    # Unpack hyperparameters directly from config.
+    HyperParams = config['general'].copy()
+    beh_key = list(config.keys())
+    beh_key.remove('general')
+    beh_key.remove('opt')
+    HyperParams.update(config[beh_key[0]])
     
     model = FeedforwardNetwork(HyperParams)
     model.fit(S, Z)
