@@ -163,7 +163,7 @@ class FeedforwardNetwork(object):
             if os.path.exists(save_path):
                 import shutil
                 shutil.rmtree(save_path)
-            os.mkdir(save_path)
+            os.makedirs(save_path)
             z, z_hat = Z[vis_item], Z_hat[vis_item] 
             for i in range(z_hat.shape[1]):
                 x,y = z[0,i,:],z[1,i,:]
@@ -285,12 +285,14 @@ class TargetFFN(object):
         Z_hat += Z_mu
 
         # print(len(Z_hat))
-        print(Z_hat.shape)
-        exit(0)
+        # print(Z_hat.shape)
+        # exit(0)
 
         return Z_hat
     
     def evaluate(self, Z, Z_hat, visulize = False, save_dir = ""):
+        
+        Z = np.array(Z)
         
         if visulize:
             print("starting visualizing the target_pos")
@@ -298,7 +300,7 @@ class TargetFFN(object):
             if os.path.exists(save_path):
                 import shutil
                 shutil.rmtree(save_path)
-            os.mkdir(save_path)
+            os.makedirs(save_path)
 
             # 提取 x 和 y 坐标
             x = Z[:, 0]

@@ -120,7 +120,7 @@ def restrict_data(Train:np.array, Test:np.array, spike_type:str, var_group:str):
     return Train_b, Test_b
 
 def store_results(MSE, behavior, behavior_estimate, HyperParams, Results, spikes_type):
-    # Results[spikes_type] = dict()
+    Results[spikes_type] = dict()
     Results[spikes_type]['MSE'] = MSE
     Results[spikes_type]['behavior'] = behavior
     Results[spikes_type]['behavior_estimate'] = behavior_estimate

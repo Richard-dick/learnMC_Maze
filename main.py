@@ -21,7 +21,7 @@ VAR_GROUPS:list = ['target_pos', 'pos']
 
 CONFIG_PATH = 'config/mc_maze.yaml'
 
-RUN = "32-8-trace"
+RUN = "test"
 
 Results = {var:dict() for var in VAR_GROUPS}
 
@@ -50,7 +50,7 @@ if __name__ == '__main__':
             # 预测结果
             val_var['estimate'] = model.predict(val_var['spikes'])
             # 分析结果
-            MSE = model.evaluate(val_var['behavior'], val_var['estimate'], visulize=True, save_dir=RUN)
+            MSE = model.evaluate(val_var['behavior'], val_var['estimate'], visulize=False, save_dir=RUN)
             
             print('The MSE about {} using {}: {}'.format(target_var, spike_type, MSE))
 
