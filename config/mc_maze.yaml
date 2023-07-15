@@ -18,7 +18,7 @@ ffn:
     num_layers: 6
     frac_dropout: 0.3
     num_epochs: 9
-  vel:
+  target_pos:
     num_units: 564
     num_layers: 9
     frac_dropout: 0.12

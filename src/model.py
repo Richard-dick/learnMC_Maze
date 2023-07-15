@@ -1,9 +1,9 @@
 import numpy as np
-from src.decoder import FeedforwardNetwork
+from src.decoder import FeedforwardNetwork, TargetFFN
 from bayes_opt import BayesianOptimization
 from src.utils import partition
 
-def train(S, Z, config):
+def train(train_var, config):
     # Unpack hyperparameters directly from config.
     HyperParams = config['general'].copy()
     beh_key = list(config.keys())
@@ -11,8 +11,12 @@ def train(S, Z, config):
     beh_key.remove('opt')
     HyperParams.update(config[beh_key[0]])
     
-    model = FeedforwardNetwork(HyperParams)
-    model.fit(S, Z)
+    if beh_key[0] == 'pos':
+        model = FeedforwardNetwork(HyperParams)
+        model.fit(train_var['spikes'], train_var['behavior'])
+    else:
+        model = TargetFFN(HyperParams)
+        model.fit(train_var['spikes'], train_var['behavior'], train_var['success'])
     
     return model, HyperParams
     

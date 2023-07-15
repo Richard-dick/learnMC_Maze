@@ -78,8 +78,15 @@ def load_data(dataset_name:str, val_frac):
     if dataset_name == 'MC_Maze_sep':
         with open('data/pickle/mc_maze_sep.pickle', 'rb') as f:
             data = pickle.load(f)
+        train_idx, test_idx = partition(data['condition'], val_frac)
+        Train = dict()
+        Test = dict()
+        for k in data.keys():
+            Train[k] = [data[k][i] for i in train_idx]
+            Test[k] = [data[k][i] for i in test_idx]
+    
+        return Train, Test
         
-        return data
     elif dataset_name == 'MC_Maze_all':
         with open('data/pickle/mc_maze_all_train.pickle', 'rb') as f:
             data = pickle.load(f)
@@ -94,29 +101,30 @@ def load_data(dataset_name:str, val_frac):
     else :
         return None, None
     
-def restrict_data(Train:np.array, Test:np.array, var_group:str):
+def restrict_data(Train:np.array, Test:np.array, spike_type:str, var_group:str):
     
-    # Initialize outputs.
     Train_b = dict()
     Test_b = dict()
     
     # Copy spikes into new dictionaries.
-    Train_b['spikes'] = copy.deepcopy(Train['spikes'])
-    Train_b['condition'] = copy.deepcopy(Train['condition'])
+    Train_b['spikes'] = copy.deepcopy(Train[spike_type])
     Train_b['behavior'] = copy.deepcopy(Train[var_group])
     
-    Test_b['spikes'] = copy.deepcopy(Test['spikes'])
-    Test_b['condition'] = copy.deepcopy(Test['condition'])
+    Test_b['spikes'] = copy.deepcopy(Test[spike_type])
     Test_b['behavior'] = copy.deepcopy(Test[var_group])
+    
+    if var_group == 'target_pos':
+        Train_b['success'] = copy.deepcopy(Train['success'])
+        Test_b['success'] = copy.deepcopy(Test['success'])
 
     return Train_b, Test_b
 
-def store_results(MSE, behavior, behavior_estimate, HyperParams, Results, var_group):
-    Results[var_group] = dict()
-    Results[var_group]['MSE'] = MSE
-    Results[var_group]['behavior'] = behavior
-    Results[var_group]['behavior_estimate'] = behavior_estimate
-    Results[var_group]['HyperParams'] = HyperParams.copy()
+def store_results(MSE, behavior, behavior_estimate, HyperParams, Results, spikes_type):
+    # Results[spikes_type] = dict()
+    Results[spikes_type]['MSE'] = MSE
+    Results[spikes_type]['behavior'] = behavior
+    Results[spikes_type]['behavior_estimate'] = behavior_estimate
+    Results[spikes_type]['HyperParams'] = HyperParams.copy()
 
     
     

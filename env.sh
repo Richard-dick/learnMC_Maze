@@ -48,19 +48,20 @@ setup_git(){
     # 安装tmux
     apt-get install tmux
 
-    git clone https://github.com/Richard-dick/learnMC_Maze.git
+    # git clone https://github.com/Richard-dick/learnMC_Maze.git
 
-    cd learnMC_Maze/
+    # cd learnMC_Maze/
     pwd
     git config --global user.email "you@example.com"
     git config --global user.name "Your Name"
 
     pip install -r requirement.txt
+    pip install dandi
 
     cd data/
     dandi download DANDI:000128/0.220113.0400
     cd ..
 }
 
-
-# setup_git
+update_python
+setup_git
