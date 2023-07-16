@@ -4,10 +4,13 @@ import pickle
 import numpy as np
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
 from src.utils import partition
 import copy
 
-pd.set_option('display.max_columns', None)
+# pd.set_option('display.max_columns', None)
+
+SPIKE_GROUPS:list = ["spikes", "PMd_spikes", "MI_spikes"]
 
 def picklize(dataset_name:str):
     print("start reading")
@@ -125,14 +128,97 @@ def store_results(MSE, behavior, behavior_estimate, HyperParams, Results, spikes
     Results[spikes_type]['behavior'] = behavior
     Results[spikes_type]['behavior_estimate'] = behavior_estimate
     Results[spikes_type]['HyperParams'] = HyperParams.copy()
-
     
     
-def save_data(Results, run_name):
+def save_data(Results:dict(), run_name, visualize = False):
     # If the 'results' directory doesn't exist, create it.
     if not os.path.exists('results'):
         os.makedirs('results')
+        
+    save_dir = 'results/' + run_name
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
     # Save Results as .pickle file.
-    with open('results/' + run_name + '.pickle','wb') as f:
+    with open(save_dir + '/res.pickle','wb') as f:
         pickle.dump(Results,f)
+        
+    # visualize the result
+    if visualize:
+        # 先画 trace:       
+        if not os.path.exists(save_dir + '/trace/'):
+            os.makedirs(save_dir +'/trace/')
+        else:
+            import shutil
+            shutil.rmtree(save_dir + '/trace/')
+            os.makedirs(save_dir + '/trace/')
+        trace = dict()
+        
+        tmp = Results['pos']['spikes']['behavior']
+        trace['ref'] = [b[:,512+15::16] for b in tmp]
+        
+        for sp in SPIKE_GROUPS:
+            trace[sp] = Results['pos'][sp]['behavior_estimate']
+        # ref 是459的list(2*1024), 其余是(2*24*8)
+        vis_item = np.random.randint(0, len(trace['ref']))    
+        x_ref,y_ref = trace['ref'][vis_item]
+        # 选取一个实验结果的24条轨迹, 画出来
+        print("starting visualizing trace: "+ str(vis_item))
+        save_path = save_dir + '/trace/'
+        if os.path.exists(save_path):
+            import shutil
+            shutil.rmtree(save_path)
+        os.makedirs(save_path)
+        
+        _, plt_num, trace_length = trace['spikes'][0].shape
+        
+        for i in range(plt_num):
+            plt.cla()
+            plt.title('The '+str(i)+' trace')
+            plt.plot(x_ref, y_ref, "y-", label = "TRACE")
+            x,y = trace['ref'][vis_item][0, i:i+trace_length], trace['ref'][vis_item][1, i:i+trace_length]
+            plt.plot(x, y, "r-", label = "ref_trace" )
+            
+            plt.plot(trace['spikes'][vis_item][0,i,:], trace['spikes'][vis_item][1,i,:], "b-", label = "spikes_trace" )
+            plt.plot(trace['MI_spikes'][vis_item][0,i,:], trace['MI_spikes'][vis_item][1,i,:], "m-", label = "MI_trace" )
+            plt.plot(trace['PMd_spikes'][vis_item][0,i,:], trace['PMd_spikes'][vis_item][1,i,:], "k-", label = "PMd_trace" )
+            
+            
+            plt.xlabel('x(mm)')
+            plt.ylabel('y(mm)')
+            plt.legend(loc = "best")
+            
+            plt.savefig(save_path+str(i)+'.png', format = 'png')
+
+        # 再画 pos 图
+        if not os.path.exists(save_dir + '/pos/'):
+            os.makedirs(save_dir +'/pos/')
+        else:
+            import shutil
+            shutil.rmtree(save_dir + '/pos/')
+            os.makedirs(save_dir + '/pos/')
+        aim = dict()
+        aim['ref'] = Results['target_pos']['spikes']['behavior_estimate']
+        for sp in SPIKE_GROUPS:
+            aim[sp] = Results['target_pos'][sp]['behavior_estimate']
+        
+        print("starting visualizing the target_pos")
+        save_path = save_dir + '/pos/'
+        if os.path.exists(save_path):
+            import shutil
+            shutil.rmtree(save_path)
+        os.makedirs(save_path)
+        
+        # 绘制散点图
+        for sp in SPIKE_GROUPS:
+            plt.cla()
+            plt.scatter(aim['ref'][:,0], aim['ref'][:,1], color = 'red', s = 10, label = "ref_pos") 
+            plt.scatter(aim[sp][:,0], aim[sp][:,1], color = 'green', s = 5, label = sp + "_pos" )
+            # plt.scatter(aim['MI_spikes'][:,0], aim['MI_spikes'][:,1], color = 'magenta', s = 10, label = "MI_pos" )
+            # plt.scatter(aim['PMd_spikes'][:,0], aim['PMd_spikes'][:,1], color = 'black', s = 10, label = "PMd_pos" )
+            
+            plt.xlabel('x(mm)')
+            plt.ylabel('y(mm)')
+            plt.title('Scatter Plot of Aim' + '(' + sp +')')
+            plt.legend(loc = 'best')
+            plt.savefig(save_path + sp + '_pos.png', format = 'png')

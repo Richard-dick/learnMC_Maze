@@ -13,15 +13,18 @@ from src.model import train
 
 PICKLIZED = True
 
+VISUALIZE = True
+
 DIV_FRAC = 0.2
 
 SPIKE_GROUPS:list = ["spikes", "PMd_spikes", "MI_spikes"]
+# VAR_GROUPS:list = ['target_pos']
 VAR_GROUPS:list = ['target_pos', 'pos']
 # MODEL = 'ffn'
 
 CONFIG_PATH = 'config/mc_maze.yaml'
 
-RUN = "test"
+RUN = "32-8-trace&&32pos"
 
 Results = {var:dict() for var in VAR_GROUPS}
 
@@ -50,7 +53,7 @@ if __name__ == '__main__':
             # 预测结果
             val_var['estimate'] = model.predict(val_var['spikes'])
             # 分析结果
-            MSE = model.evaluate(val_var['behavior'], val_var['estimate'], visulize=False, save_dir=RUN)
+            MSE = model.evaluate(val_var['behavior'], val_var['estimate'])
             
             print('The MSE about {} using {}: {}'.format(target_var, spike_type, MSE))
 
@@ -58,4 +61,4 @@ if __name__ == '__main__':
             store_results(MSE, val_var['behavior'], val_var['estimate'], HyperParams, Results[target_var], spike_type)
 
     # Save results.
-    save_data(Results, RUN)
+    save_data(Results, RUN, VISUALIZE)
