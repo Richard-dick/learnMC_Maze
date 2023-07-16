@@ -290,7 +290,7 @@ class TargetFFN(object):
 
         return Z_hat
     
-    def evaluate(self, Z, Z_hat, visulize = True, save_dir = ""):
+    def evaluate(self, Z, Z_hat, visulize = False, save_dir = ""):
         
         Z = np.array(Z)
         

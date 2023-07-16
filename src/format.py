@@ -198,7 +198,12 @@ def save_data(Results:dict(), run_name, visualize = False):
             shutil.rmtree(save_dir + '/pos/')
             os.makedirs(save_dir + '/pos/')
         aim = dict()
-        aim['ref'] = Results['target_pos']['spikes']['behavior_estimate']
+        aim['ref'] = np.array(Results['target_pos']['spikes']['behavior'])
+        # print(type(aim['ref']))
+        # print(len(aim['ref']))
+        # print(aim['ref'].shape)
+        # exit(0)
+        
         for sp in SPIKE_GROUPS:
             aim[sp] = Results['target_pos'][sp]['behavior_estimate']
         
